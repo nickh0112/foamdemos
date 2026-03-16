@@ -1,6 +1,26 @@
+import { useState, useEffect } from 'react'
 import { followerGrowthData } from '../../data/smart-explanation'
 
-export default function FollowerGrowthChart() {
+interface Props {
+  isSelectable?: boolean
+  isSelected?: boolean
+  isPrompting?: boolean
+  glowDelay?: number
+  onSelect?: () => void
+}
+
+export default function FollowerGrowthChart({ isSelectable, isSelected, isPrompting, glowDelay = 1700, onSelect }: Props) {
+  const [glowActive, setGlowActive] = useState(false)
+
+  useEffect(() => {
+    if (!isPrompting) {
+      setGlowActive(false)
+      return
+    }
+    const timer = setTimeout(() => setGlowActive(true), glowDelay)
+    return () => clearTimeout(timer)
+  }, [isPrompting, glowDelay])
+
   // Simple upward trending polyline points
   const points = [
     [0, 120], [50, 115], [100, 108], [150, 112], [200, 95],
@@ -13,7 +33,20 @@ export default function FollowerGrowthChart() {
   const areaPath = `M${points[0][0]},${points[0][1]} ${points.map(([x, y]) => `L${x},${y}`).join(' ')} L${points[points.length - 1][0]},140 L${points[0][0]},140 Z`
 
   return (
-    <div className="rounded-xl bg-bg-card border border-border-card p-5">
+    <div
+      onClick={isSelectable ? onSelect : undefined}
+      className={`rounded-xl bg-bg-card border p-5 transition-all ${
+        isSelected
+          ? 'border-[rgba(139,92,246,0.5)]'
+          : glowActive
+            ? 'border-[rgba(139,92,246,0.3)]'
+            : 'border-border-card'
+      } ${
+        isSelectable
+          ? 'cursor-pointer hover:border-[rgba(139,92,246,0.4)]'
+          : ''
+      } ${glowActive ? 'glow-pulse' : ''}`}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <span className="text-[11px] font-semibold text-text-tertiary tracking-wider uppercase">

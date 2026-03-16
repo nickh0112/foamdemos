@@ -14,7 +14,9 @@ interface Props {
 }
 
 export default function PlatformTabs({ flowState, onAskFoam }: Props) {
-  const isActive = flowState !== 'base'
+  // Green "Engagement Analysis" state only for selecting and later (not arrival)
+  const isActive = flowState !== 'base' && flowState !== 'arrival'
+  const isArrival = flowState === 'arrival'
 
   return (
     <div className="rounded-lg bg-bg-card border border-border-card h-9 flex items-center gap-2.5 px-3">
@@ -40,7 +42,7 @@ export default function PlatformTabs({ flowState, onAskFoam }: Props) {
         className={`flex items-center gap-1.5 h-7 px-3 rounded-full text-[11px] font-medium border-0 transition-all ${
           isActive
             ? 'bg-brand-green/10 border border-brand-green/30 text-brand-green cursor-default'
-            : 'bg-brand-purple/10 border border-brand-purple/30 text-[#c4b5fd] hover:bg-brand-purple/20 cursor-pointer'
+            : `bg-brand-purple/10 border border-brand-purple/30 text-[#c4b5fd] hover:bg-brand-purple/20 cursor-pointer ${isArrival ? 'glow-pulse' : ''}`
         }`}
       >
         {isActive ? (

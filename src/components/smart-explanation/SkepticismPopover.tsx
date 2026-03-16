@@ -15,6 +15,9 @@ interface Props {
 }
 
 export default function SkepticismPopover({ flowState, onGoDeeper }: Props) {
+  // Staggered section delays for chunk-by-chunk reveal
+  const sectionDelays = [0, 0.2, 0.4, 0.6, 0.75, 0.9]
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -26,7 +29,12 @@ export default function SkepticismPopover({ flowState, onGoDeeper }: Props) {
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: sectionDelays[0], duration: 0.3 }}
+        className="flex items-center justify-between"
+      >
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 rounded-full bg-brand-purple" />
           <span className="text-[13px] font-semibold text-text-primary">{skepticismData.title}</span>
@@ -34,31 +42,56 @@ export default function SkepticismPopover({ flowState, onGoDeeper }: Props) {
         <button className="text-text-tertiary hover:text-text-secondary transition-colors bg-transparent border-0 cursor-pointer">
           <X className="w-3.5 h-3.5" />
         </button>
-      </div>
+      </motion.div>
 
       {/* Formula */}
-      <div className="flex items-center gap-2 rounded-lg bg-bg-card-hover px-3 py-2">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: sectionDelays[1], duration: 0.3 }}
+        className="flex items-center gap-2 rounded-lg bg-bg-card-hover px-3 py-2"
+      >
         <Calculator className="w-3.5 h-3.5 text-text-tertiary shrink-0" />
         <span className="text-[11px] text-text-secondary">{skepticismData.formula}</span>
-      </div>
+      </motion.div>
 
       {/* Source */}
-      <div className="flex items-center gap-2 px-1">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: sectionDelays[2], duration: 0.3 }}
+        className="flex items-center gap-2 px-1"
+      >
         <div className="w-1.5 h-1.5 rounded-full bg-brand-green shrink-0" />
         <span className="text-[11px] text-text-secondary">{skepticismData.source}</span>
-      </div>
+      </motion.div>
 
       {/* Comparison */}
-      <div className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: sectionDelays[3], duration: 0.3 }}
+        className="flex items-center gap-2 rounded-lg bg-red-500/10 px-3 py-2"
+      >
         <TrendingDown className="w-3.5 h-3.5 text-brand-red shrink-0" />
         <span className="text-[11px] text-text-secondary">{skepticismData.comparison}</span>
-      </div>
+      </motion.div>
 
       {/* Divider */}
-      <div className="h-px bg-border-card" />
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: sectionDelays[4], duration: 0.3 }}
+        className="h-px bg-border-card"
+      />
 
       {/* Go Deeper */}
-      <div className="flex flex-col gap-2.5 pt-1">
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: sectionDelays[5], duration: 0.3 }}
+        className="flex flex-col gap-2.5 pt-1"
+      >
         <div className="flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-brand-purple" />
           <span className="text-[13px] font-semibold text-brand-purple">Go Deeper</span>
@@ -72,7 +105,7 @@ export default function SkepticismPopover({ flowState, onGoDeeper }: Props) {
                 key={i}
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: i * 0.1, duration: 0.25 }}
+                transition={{ delay: sectionDelays[5] + 0.1 + i * 0.1, duration: 0.25 }}
                 onClick={isRecalculate ? onGoDeeper : undefined}
                 className={`flex items-center gap-2 rounded-2xl bg-brand-purple/5 border border-brand-purple/20 px-3 py-1.5 text-left transition-colors bg-transparent ${
                   isRecalculate
@@ -87,7 +120,7 @@ export default function SkepticismPopover({ flowState, onGoDeeper }: Props) {
             )
           })}
         </div>
-      </div>
+      </motion.div>
     </motion.div>
   )
 }

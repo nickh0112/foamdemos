@@ -1,28 +1,87 @@
 import { useEffect, useRef, useState } from 'react'
 import { Sparkles, Minus, Send } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { chatMessages } from '../../data/smart-explanation'
+import { metricExplanations, type MetricKey } from '../../data/smart-explanation'
 
-export default function FoamAssistPanel() {
-  const [visibleMessages, setVisibleMessages] = useState<typeof chatMessages>([])
+interface Message {
+  role: 'ai' | 'user'
+  name: string
+  text: string
+}
+
+interface Props {
+  metric?: MetricKey | null
+  suggestedQuestion?: string | null
+}
+
+export default function FoamAssistPanel({ metric, suggestedQuestion }: Props) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputValue, setInputValue] = useState('')
   const threadRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
+  // Seed initial AI message from the metric explanation
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = []
-    chatMessages.forEach((msg, i) => {
-      const timer = setTimeout(() => {
-        setVisibleMessages((prev) => [...prev, msg])
-      }, (i + 1) * 800)
-      timers.push(timer)
-    })
-    return () => timers.forEach(clearTimeout)
-  }, [])
+    if (!metric) return
+    const data = metricExplanations[metric]
+    const initialMsg: Message = {
+      role: 'ai',
+      name: 'Foam Assist',
+      text: data.explanation.aiReply,
+    }
+    // Show initial AI reply near-instantly
+    const timer = setTimeout(() => {
+      setMessages([initialMsg])
+      // Pre-fill the suggested question if provided
+      if (suggestedQuestion) {
+        setInputValue(suggestedQuestion)
+      }
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [metric, suggestedQuestion])
 
+  // Auto-scroll on new messages
   useEffect(() => {
     if (threadRef.current) {
       threadRef.current.scrollTop = threadRef.current.scrollHeight
     }
-  }, [visibleMessages])
+  }, [messages])
+
+  // Focus the input after messages load
+  useEffect(() => {
+    if (messages.length > 0 && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [messages])
+
+  const handleSend = () => {
+    const text = inputValue.trim()
+    if (!text || !metric) return
+
+    const userMsg: Message = { role: 'user', name: 'You', text }
+    setMessages((prev) => [...prev, userMsg])
+    setInputValue('')
+
+    // Simulate AI thinking + reply
+    const data = metricExplanations[metric]
+    setTimeout(() => {
+      const aiMsg: Message = {
+        role: 'ai',
+        name: 'Foam Assist',
+        text: text === data.explanation.nudge.question
+          ? data.explanation.aiReply
+          : `That's a great question about ${data.label.toLowerCase()}. Based on the data I've analyzed, ${data.explanation.sections.find(s => s.type === 'insight')?.text || 'the current metrics suggest room for further investigation.'}`,
+      }
+      setMessages((prev) => [...prev, aiMsg])
+    }, 1200)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
 
   return (
     <motion.div
@@ -33,8 +92,13 @@ export default function FoamAssistPanel() {
       className="rounded-xl bg-bg-card border border-border-card overflow-hidden flex flex-col flex-1 min-h-0"
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3.5 border-b border-border-card shrink-0">
-        <Sparkles className="w-4 h-4 text-brand-purple" />
+      <div className="flex items-center gap-2 px-4 py-3.5 border-b border-border-card border-t-2 border-t-brand-purple shrink-0">
+        <motion.div
+          animate={{ rotate: [0, 15, -15, 10, -10, 0] }}
+          transition={{ duration: 0.8, ease: 'easeInOut' }}
+        >
+          <Sparkles className="w-4 h-4 text-brand-purple" />
+        </motion.div>
         <span className="text-sm font-bold text-text-primary">Foam Assist</span>
         <div className="flex-1" />
         <button className="text-text-tertiary hover:text-text-secondary transition-colors bg-transparent border-0 cursor-pointer">
@@ -44,7 +108,7 @@ export default function FoamAssistPanel() {
 
       {/* Thread */}
       <div ref={threadRef} className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        {visibleMessages.map((msg, i) => (
+        {messages.map((msg, i) => (
           <motion.div
             key={i}
             initial={{ opacity: 0, y: 8 }}
@@ -71,8 +135,21 @@ export default function FoamAssistPanel() {
 
       {/* Input */}
       <div className="border-t border-border-card px-4 py-3 flex items-center gap-2 shrink-0">
-        <span className="flex-1 text-[12px] text-text-tertiary">Ask anything about these metrics…</span>
-        <Send className="w-3.5 h-3.5 text-brand-purple" />
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ask anything about these metrics…"
+          className="flex-1 text-[12px] text-text-primary placeholder:text-text-tertiary bg-transparent border-0 outline-none"
+        />
+        <button
+          onClick={handleSend}
+          className="bg-transparent border-0 cursor-pointer p-0 text-brand-purple hover:text-[#c4b5fd] transition-colors"
+        >
+          <Send className="w-3.5 h-3.5" />
+        </button>
       </div>
     </motion.div>
   )
