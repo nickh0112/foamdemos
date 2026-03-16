@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-bg-app: #0f1318;
+  --color-bg-sidebar: #15191e;
+  --color-bg-card: #1c2128;
+  --color-bg-card-hover: #252b33;
+  --color-border-card: #2a3140;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8b94a2;
+  --color-text-tertiary: #54657d;
+  --color-brand-blue: #155fef;
+  --color-brand-green: #34c0a2;
+  --color-brand-purple: #8b5cf6;
+  --color-brand-red: #ef4444;
+  --color-brand-amber: #f59e0b;
+  --color-link-blue: #3b82f6;
+  --font-family-sans: 'Inter', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0f1318;
+  color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+* {
+  scrollbar-width: none;
+}
+::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, #252b33 25%, #2a3140 50%, #252b33 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
