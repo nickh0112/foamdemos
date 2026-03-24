@@ -21,6 +21,16 @@ export interface BaseCreator {
 export interface CriterionDef {
   key: string
   label: string
+  // Structured filter fields (undefined for NL-derived criteria)
+  filterType?: 'range' | 'select' | 'multi-select' | 'audience-threshold'
+  enrichmentKey?: string
+  operator?: 'gte' | 'lte' | 'eq' | 'between'
+  value?: string | number
+  valueTo?: number
+  platform?: 'ig' | 'tt' | 'yt'
+  selectValues?: string[]  // for multi-select filters
+  audienceField?: 'gender' | 'age' | 'countries'
+  audienceSegment?: string
 }
 
 export interface EnrichmentDef {
@@ -32,6 +42,9 @@ export interface EnrichmentDef {
 export const AVAILABLE_ENRICHMENTS: EnrichmentDef[] = [
   { key: 'igEngRate', label: 'Eng. Rate', platform: 'ig' },
   { key: 'igAvgLikes', label: 'Avg Likes', platform: 'ig' },
+  { key: 'igAvgStoryViews', label: 'Story Views', platform: 'ig' },
+  { key: 'igAvgReelViews', label: 'Reel Views', platform: 'ig' },
+  { key: 'igAvgReach', label: 'Avg Reach', platform: 'ig' },
   { key: 'ttAvgViews', label: 'Avg Views', platform: 'tt' },
   { key: 'ttEngRate', label: 'Eng. Rate', platform: 'tt' },
   { key: 'ytAvgViews', label: 'Avg Views', platform: 'yt' },
@@ -42,23 +55,250 @@ export const AVAILABLE_ENRICHMENTS: EnrichmentDef[] = [
 ]
 
 export const ENRICHMENT_DATA: Record<string, Record<string, string>> = {
-  maya: { igEngRate: '4.2%', igAvgLikes: '8.5K', ttAvgViews: '32K', ttEngRate: '5.8%', ytAvgViews: '4.1K', ytSubs: '12K', brandDeals: '8', email: 'maya@mgmt.co', manager: 'Sarah L.' },
-  priya: { igEngRate: '5.1%', igAvgLikes: '6.2K', ttAvgViews: '28K', ttEngRate: '7.3%', ytAvgViews: '9.4K', ytSubs: '28K', brandDeals: '12', email: 'priya@talent.io', manager: 'Alex M.' },
-  jess: { igEngRate: '3.8%', igAvgLikes: '12K', ttAvgViews: '45K', ttEngRate: '4.1%', ytAvgViews: '18K', ytSubs: '95K', brandDeals: '15', email: 'jess@fit.co', manager: 'Mike R.' },
-  lena: { igEngRate: '6.3%', igAvgLikes: '4.8K', ttAvgViews: '18K', ttEngRate: '8.2%', ytAvgViews: '52K', ytSubs: '245K', brandDeals: '5', email: 'lena@diy.me', manager: '—' },
-  carlos: { igEngRate: '2.9%', igAvgLikes: '11K', ttAvgViews: '120K', ttEngRate: '3.4%', ytAvgViews: '85K', ytSubs: '1.2M', brandDeals: '22', email: 'carlos@tech.gg', manager: 'David K.' },
-  aisha: { igEngRate: '3.4%', igAvgLikes: '28K', ttAvgViews: '85K', ttEngRate: '4.7%', ytAvgViews: '42K', ytSubs: '340K', brandDeals: '30', email: 'aisha@glam.co', manager: 'Jen P.' },
-  derek: { igEngRate: '4.7%', igAvgLikes: '7.8K', ttAvgViews: '22K', ttEngRate: '5.2%', ytAvgViews: '14K', ytSubs: '78K', brandDeals: '9', email: 'derek@food.tv', manager: '—' },
-  nina: { igEngRate: '5.5%', igAvgLikes: '14K', ttAvgViews: '35K', ttEngRate: '6.1%', ytAvgViews: '8.2K', ytSubs: '55K', brandDeals: '7', email: 'nina@well.co', manager: 'Chris T.' },
-  marcus: { igEngRate: '3.1%', igAvgLikes: '4.2K', ttAvgViews: '52K', ttEngRate: '4.9%', ytAvgViews: '15K', ytSubs: '92K', brandDeals: '11', email: 'marcus@fit.co', manager: 'Sarah L.' },
-  sophie: { igEngRate: '7.2%', igAvgLikes: '5.1K', ttAvgViews: '15K', ttEngRate: '9.4%', ytAvgViews: '62K', ytSubs: '410K', brandDeals: '4', email: 'sophie@edu.io', manager: '—' },
-  tyler: { igEngRate: '2.6%', igAvgLikes: '12K', ttAvgViews: '78K', ttEngRate: '3.8%', ytAvgViews: '22K', ytSubs: '150K', brandDeals: '18', email: 'tyler@adv.co', manager: 'Pat M.' },
-  rachel: { igEngRate: '3.9%', igAvgLikes: '25K', ttAvgViews: '92K', ttEngRate: '5.3%', ytAvgViews: '35K', ytSubs: '230K', brandDeals: '25', email: 'rachel@beauty.co', manager: 'Jen P.' },
-  jordan: { igEngRate: '4.8%', igAvgLikes: '9.1K', ttAvgViews: '38K', ttEngRate: '6.7%', ytAvgViews: '6.8K', ytSubs: '45K', brandDeals: '6', email: 'jordan@style.co', manager: '—' },
-  emma: { igEngRate: '5.8%', igAvgLikes: '14K', ttAvgViews: '42K', ttEngRate: '7.1%', ytAvgViews: '78K', ytSubs: '520K', brandDeals: '10', email: 'emma@home.co', manager: 'Lisa W.' },
-  omar: { igEngRate: '2.3%', igAvgLikes: '7.5K', ttAvgViews: '65K', ttEngRate: '3.2%', ytAvgViews: '95K', ytSubs: '680K', brandDeals: '14', email: 'omar@biz.co', manager: 'David K.' },
-  mia: { igEngRate: '4.1%', igAvgLikes: '22K', ttAvgViews: '55K', ttEngRate: '5.6%', ytAvgViews: '18K', ytSubs: '120K', brandDeals: '16', email: 'mia@travel.co', manager: 'Alex M.' },
-  ben: { igEngRate: '8.5%', igAvgLikes: '8.2K', ttAvgViews: '210K', ttEngRate: '11.2%', ytAvgViews: '48K', ytSubs: '340K', brandDeals: '3', email: 'ben@comedy.co', manager: '—' },
+  maya: { igEngRate: '4.2%', igAvgLikes: '8.5K', igAvgStoryViews: '12K', igAvgReelViews: '45K', igAvgReach: '85K', ttAvgViews: '32K', ttEngRate: '5.8%', ytAvgViews: '4.1K', ytSubs: '12K', brandDeals: '8', email: 'maya@mgmt.co', manager: 'Sarah L.' },
+  priya: { igEngRate: '5.1%', igAvgLikes: '6.2K', igAvgStoryViews: '8K', igAvgReelViews: '28K', igAvgReach: '42K', ttAvgViews: '28K', ttEngRate: '7.3%', ytAvgViews: '9.4K', ytSubs: '28K', brandDeals: '12', email: 'priya@talent.io', manager: 'Alex M.' },
+  jess: { igEngRate: '3.8%', igAvgLikes: '12K', igAvgStoryViews: '22K', igAvgReelViews: '65K', igAvgReach: '120K', ttAvgViews: '45K', ttEngRate: '4.1%', ytAvgViews: '18K', ytSubs: '95K', brandDeals: '15', email: 'jess@fit.co', manager: 'Mike R.' },
+  lena: { igEngRate: '6.3%', igAvgLikes: '4.8K', igAvgStoryViews: '5.2K', igAvgReelViews: '18K', igAvgReach: '32K', ttAvgViews: '18K', ttEngRate: '8.2%', ytAvgViews: '52K', ytSubs: '245K', brandDeals: '5', email: 'lena@diy.me', manager: '—' },
+  carlos: { igEngRate: '2.9%', igAvgLikes: '11K', igAvgStoryViews: '15K', igAvgReelViews: '38K', igAvgReach: '95K', ttAvgViews: '120K', ttEngRate: '3.4%', ytAvgViews: '85K', ytSubs: '1.2M', brandDeals: '22', email: 'carlos@tech.gg', manager: 'David K.' },
+  aisha: { igEngRate: '3.4%', igAvgLikes: '28K', igAvgStoryViews: '45K', igAvgReelViews: '120K', igAvgReach: '280K', ttAvgViews: '85K', ttEngRate: '4.7%', ytAvgViews: '42K', ytSubs: '340K', brandDeals: '30', email: 'aisha@glam.co', manager: 'Jen P.' },
+  derek: { igEngRate: '4.7%', igAvgLikes: '7.8K', igAvgStoryViews: '9.5K', igAvgReelViews: '35K', igAvgReach: '62K', ttAvgViews: '22K', ttEngRate: '5.2%', ytAvgViews: '14K', ytSubs: '78K', brandDeals: '9', email: 'derek@food.tv', manager: '—' },
+  nina: { igEngRate: '5.5%', igAvgLikes: '14K', igAvgStoryViews: '18K', igAvgReelViews: '52K', igAvgReach: '95K', ttAvgViews: '35K', ttEngRate: '6.1%', ytAvgViews: '8.2K', ytSubs: '55K', brandDeals: '7', email: 'nina@well.co', manager: 'Chris T.' },
+  marcus: { igEngRate: '3.1%', igAvgLikes: '4.2K', igAvgStoryViews: '8.8K', igAvgReelViews: '32K', igAvgReach: '55K', ttAvgViews: '52K', ttEngRate: '4.9%', ytAvgViews: '15K', ytSubs: '92K', brandDeals: '11', email: 'marcus@fit.co', manager: 'Sarah L.' },
+  sophie: { igEngRate: '7.2%', igAvgLikes: '5.1K', igAvgStoryViews: '4.5K', igAvgReelViews: '15K', igAvgReach: '28K', ttAvgViews: '15K', ttEngRate: '9.4%', ytAvgViews: '62K', ytSubs: '410K', brandDeals: '4', email: 'sophie@edu.io', manager: '—' },
+  tyler: { igEngRate: '2.6%', igAvgLikes: '12K', igAvgStoryViews: '25K', igAvgReelViews: '78K', igAvgReach: '145K', ttAvgViews: '78K', ttEngRate: '3.8%', ytAvgViews: '22K', ytSubs: '150K', brandDeals: '18', email: 'tyler@adv.co', manager: 'Pat M.' },
+  rachel: { igEngRate: '3.9%', igAvgLikes: '25K', igAvgStoryViews: '38K', igAvgReelViews: '95K', igAvgReach: '210K', ttAvgViews: '92K', ttEngRate: '5.3%', ytAvgViews: '35K', ytSubs: '230K', brandDeals: '25', email: 'rachel@beauty.co', manager: 'Jen P.' },
+  jordan: { igEngRate: '4.8%', igAvgLikes: '9.1K', igAvgStoryViews: '12K', igAvgReelViews: '42K', igAvgReach: '72K', ttAvgViews: '38K', ttEngRate: '6.7%', ytAvgViews: '6.8K', ytSubs: '45K', brandDeals: '6', email: 'jordan@style.co', manager: '—' },
+  emma: { igEngRate: '5.8%', igAvgLikes: '14K', igAvgStoryViews: '16K', igAvgReelViews: '48K', igAvgReach: '88K', ttAvgViews: '42K', ttEngRate: '7.1%', ytAvgViews: '78K', ytSubs: '520K', brandDeals: '10', email: 'emma@home.co', manager: 'Lisa W.' },
+  omar: { igEngRate: '2.3%', igAvgLikes: '7.5K', igAvgStoryViews: '12K', igAvgReelViews: '28K', igAvgReach: '75K', ttAvgViews: '65K', ttEngRate: '3.2%', ytAvgViews: '95K', ytSubs: '680K', brandDeals: '14', email: 'omar@biz.co', manager: 'David K.' },
+  mia: { igEngRate: '4.1%', igAvgLikes: '22K', igAvgStoryViews: '32K', igAvgReelViews: '85K', igAvgReach: '180K', ttAvgViews: '55K', ttEngRate: '5.6%', ytAvgViews: '18K', ytSubs: '120K', brandDeals: '16', email: 'mia@travel.co', manager: 'Alex M.' },
+  ben: { igEngRate: '8.5%', igAvgLikes: '8.2K', igAvgStoryViews: '6.5K', igAvgReelViews: '55K', igAvgReach: '42K', ttAvgViews: '210K', ttEngRate: '11.2%', ytAvgViews: '48K', ytSubs: '340K', brandDeals: '3', email: 'ben@comedy.co', manager: '—' },
+}
+
+export interface AudienceDemographics {
+  gender: { male: number; female: number }
+  age: Record<string, number>
+  countries: Record<string, number>
+}
+
+export const AUDIENCE_DATA: Record<string, Partial<Record<'ig' | 'tt' | 'yt', AudienceDemographics>>> = {
+  maya: {
+    ig: { gender: { male: 28, female: 72 }, age: { '13-17': 4, '18-24': 22, '25-34': 38, '35-44': 24, '45-54': 9, '55+': 3 }, countries: { US: 78, MX: 8, CA: 5, UK: 4, BR: 3, DE: 2 } },
+    tt: { gender: { male: 35, female: 65 }, age: { '13-17': 8, '18-24': 35, '25-34': 32, '35-44': 16, '45-54': 6, '55+': 3 }, countries: { US: 70, MX: 10, CA: 6, UK: 5, BR: 4, DE: 3 } },
+    yt: { gender: { male: 32, female: 68 }, age: { '13-17': 3, '18-24': 18, '25-34': 35, '35-44': 28, '45-54': 12, '55+': 4 }, countries: { US: 75, CA: 7, UK: 6, MX: 5, AU: 4, DE: 2 } },
+  },
+  priya: {
+    ig: { gender: { male: 20, female: 80 }, age: { '13-17': 3, '18-24': 15, '25-34': 36, '35-44': 30, '45-54': 12, '55+': 4 }, countries: { US: 65, IN: 15, CA: 6, UK: 5, AU: 4, DE: 3 } },
+    tt: { gender: { male: 25, female: 75 }, age: { '13-17': 6, '18-24': 28, '25-34': 34, '35-44': 22, '45-54': 7, '55+': 3 }, countries: { US: 60, IN: 18, CA: 7, UK: 5, AU: 5, MX: 3 } },
+    yt: { gender: { male: 22, female: 78 }, age: { '13-17': 2, '18-24': 14, '25-34': 33, '35-44': 32, '45-54': 14, '55+': 5 }, countries: { US: 62, IN: 16, CA: 7, UK: 6, AU: 5, DE: 2 } },
+  },
+  jess: {
+    ig: { gender: { male: 32, female: 68 }, age: { '13-17': 3, '18-24': 30, '25-34': 35, '35-44': 20, '45-54': 9, '55+': 3 }, countries: { US: 82, CA: 5, UK: 4, AU: 3, MX: 3, DE: 2 } },
+    tt: { gender: { male: 38, female: 62 }, age: { '13-17': 10, '18-24': 38, '25-34': 28, '35-44': 14, '45-54': 7, '55+': 3 }, countries: { US: 75, CA: 6, UK: 5, MX: 5, AU: 4, BR: 3 } },
+    yt: { gender: { male: 35, female: 65 }, age: { '13-17': 2, '18-24': 24, '25-34': 36, '35-44': 24, '45-54': 10, '55+': 4 }, countries: { US: 80, CA: 6, UK: 5, AU: 4, DE: 3, MX: 2 } },
+  },
+  lena: {
+    ig: { gender: { male: 18, female: 82 }, age: { '13-17': 2, '18-24': 12, '25-34': 34, '35-44': 32, '45-54': 15, '55+': 5 }, countries: { US: 80, CA: 6, MX: 5, UK: 4, AU: 3, DE: 2 } },
+    tt: { gender: { male: 22, female: 78 }, age: { '13-17': 5, '18-24': 22, '25-34': 36, '35-44': 25, '45-54': 9, '55+': 3 }, countries: { US: 75, MX: 8, CA: 6, UK: 4, AU: 4, BR: 2 } },
+    yt: { gender: { male: 20, female: 80 }, age: { '13-17': 2, '18-24': 10, '25-34': 30, '35-44': 35, '45-54': 17, '55+': 6 }, countries: { US: 78, CA: 7, UK: 5, MX: 4, AU: 3, DE: 2 } },
+  },
+  carlos: {
+    ig: { gender: { male: 75, female: 25 }, age: { '13-17': 12, '18-24': 34, '25-34': 30, '35-44': 15, '45-54': 6, '55+': 3 }, countries: { US: 55, BR: 12, MX: 10, UK: 7, CA: 6, DE: 5 } },
+    tt: { gender: { male: 80, female: 20 }, age: { '13-17': 18, '18-24': 38, '25-34': 25, '35-44': 12, '45-54': 5, '55+': 2 }, countries: { US: 48, BR: 14, MX: 12, UK: 8, CA: 6, DE: 5 } },
+    yt: { gender: { male: 78, female: 22 }, age: { '13-17': 10, '18-24': 32, '25-34': 32, '35-44': 16, '45-54': 7, '55+': 3 }, countries: { US: 52, BR: 12, MX: 10, UK: 8, CA: 7, DE: 5 } },
+  },
+  aisha: {
+    ig: { gender: { male: 15, female: 85 }, age: { '13-17': 8, '18-24': 35, '25-34': 32, '35-44': 16, '45-54': 6, '55+': 3 }, countries: { US: 62, UK: 10, CA: 7, FR: 5, DE: 5, AU: 4 } },
+    tt: { gender: { male: 18, female: 82 }, age: { '13-17': 14, '18-24': 40, '25-34': 26, '35-44': 12, '45-54': 5, '55+': 3 }, countries: { US: 55, UK: 12, CA: 8, FR: 6, DE: 5, AU: 5 } },
+    yt: { gender: { male: 20, female: 80 }, age: { '13-17': 6, '18-24': 30, '25-34': 34, '35-44': 18, '45-54': 8, '55+': 4 }, countries: { US: 60, UK: 10, CA: 8, FR: 6, DE: 5, AU: 4 } },
+  },
+  derek: {
+    ig: { gender: { male: 48, female: 52 }, age: { '13-17': 3, '18-24': 18, '25-34': 34, '35-44': 28, '45-54': 12, '55+': 5 }, countries: { US: 72, CA: 6, UK: 5, MX: 5, AU: 4, DE: 3 } },
+    tt: { gender: { male: 52, female: 48 }, age: { '13-17': 6, '18-24': 28, '25-34': 32, '35-44': 22, '45-54': 8, '55+': 4 }, countries: { US: 68, MX: 8, CA: 6, UK: 5, AU: 5, BR: 4 } },
+    yt: { gender: { male: 50, female: 50 }, age: { '13-17': 2, '18-24': 16, '25-34': 32, '35-44': 30, '45-54': 14, '55+': 6 }, countries: { US: 70, CA: 7, UK: 6, MX: 5, AU: 5, DE: 3 } },
+  },
+  nina: {
+    ig: { gender: { male: 26, female: 74 }, age: { '13-17': 4, '18-24': 24, '25-34': 36, '35-44': 22, '45-54': 10, '55+': 4 }, countries: { US: 70, UK: 7, CA: 6, DE: 5, AU: 4, FR: 4 } },
+    tt: { gender: { male: 30, female: 70 }, age: { '13-17': 7, '18-24': 32, '25-34': 30, '35-44': 19, '45-54': 8, '55+': 4 }, countries: { US: 65, UK: 8, CA: 7, DE: 5, AU: 5, FR: 4 } },
+    yt: { gender: { male: 28, female: 72 }, age: { '13-17': 3, '18-24': 20, '25-34': 34, '35-44': 26, '45-54': 12, '55+': 5 }, countries: { US: 68, UK: 7, CA: 7, DE: 5, AU: 5, FR: 3 } },
+  },
+  marcus: {
+    ig: { gender: { male: 60, female: 40 }, age: { '13-17': 5, '18-24': 32, '25-34': 34, '35-44': 18, '45-54': 8, '55+': 3 }, countries: { US: 75, CA: 6, UK: 5, MX: 4, AU: 4, BR: 3 } },
+    tt: { gender: { male: 65, female: 35 }, age: { '13-17': 10, '18-24': 38, '25-34': 28, '35-44': 14, '45-54': 7, '55+': 3 }, countries: { US: 70, CA: 7, UK: 6, MX: 5, AU: 4, BR: 4 } },
+    yt: { gender: { male: 62, female: 38 }, age: { '13-17': 4, '18-24': 28, '25-34': 34, '35-44': 20, '45-54': 10, '55+': 4 }, countries: { US: 72, CA: 7, UK: 6, MX: 5, AU: 4, DE: 3 } },
+  },
+  sophie: {
+    ig: { gender: { male: 22, female: 78 }, age: { '13-17': 2, '18-24': 10, '25-34': 32, '35-44': 34, '45-54': 16, '55+': 6 }, countries: { US: 58, IN: 10, CA: 8, UK: 7, AU: 6, DE: 4 } },
+    tt: { gender: { male: 28, female: 72 }, age: { '13-17': 5, '18-24': 20, '25-34': 34, '35-44': 26, '45-54': 10, '55+': 5 }, countries: { US: 52, IN: 12, CA: 8, UK: 8, AU: 6, DE: 5 } },
+    yt: { gender: { male: 24, female: 76 }, age: { '13-17': 2, '18-24': 8, '25-34': 28, '35-44': 36, '45-54': 18, '55+': 8 }, countries: { US: 55, IN: 12, CA: 8, UK: 7, AU: 7, DE: 4 } },
+  },
+  tyler: {
+    ig: { gender: { male: 65, female: 35 }, age: { '13-17': 6, '18-24': 30, '25-34': 34, '35-44': 18, '45-54': 8, '55+': 4 }, countries: { US: 68, CA: 8, UK: 6, AU: 5, DE: 4, FR: 3 } },
+    tt: { gender: { male: 70, female: 30 }, age: { '13-17': 12, '18-24': 36, '25-34': 28, '35-44': 14, '45-54': 7, '55+': 3 }, countries: { US: 62, CA: 10, UK: 7, AU: 6, DE: 5, FR: 4 } },
+    yt: { gender: { male: 68, female: 32 }, age: { '13-17': 4, '18-24': 26, '25-34': 34, '35-44': 22, '45-54': 10, '55+': 4 }, countries: { US: 65, CA: 9, UK: 7, AU: 6, DE: 5, FR: 3 } },
+  },
+  rachel: {
+    ig: { gender: { male: 12, female: 88 }, age: { '13-17': 9, '18-24': 36, '25-34': 30, '35-44': 16, '45-54': 6, '55+': 3 }, countries: { US: 55, UK: 10, CA: 8, FR: 6, DE: 5, AU: 5 } },
+    tt: { gender: { male: 15, female: 85 }, age: { '13-17': 15, '18-24': 40, '25-34': 25, '35-44': 12, '45-54': 5, '55+': 3 }, countries: { US: 50, UK: 12, CA: 8, FR: 7, DE: 6, AU: 5 } },
+    yt: { gender: { male: 17, female: 83 }, age: { '13-17': 6, '18-24': 32, '25-34': 32, '35-44': 18, '45-54': 8, '55+': 4 }, countries: { US: 52, UK: 11, CA: 8, FR: 7, DE: 6, AU: 5 } },
+  },
+  jordan: {
+    ig: { gender: { male: 30, female: 70 }, age: { '13-17': 5, '18-24': 34, '25-34': 32, '35-44': 18, '45-54': 8, '55+': 3 }, countries: { US: 72, CA: 6, UK: 5, MX: 5, AU: 4, DE: 3 } },
+    tt: { gender: { male: 35, female: 65 }, age: { '13-17': 10, '18-24': 40, '25-34': 26, '35-44': 14, '45-54': 7, '55+': 3 }, countries: { US: 68, CA: 7, UK: 6, MX: 6, AU: 5, DE: 3 } },
+    yt: { gender: { male: 33, female: 67 }, age: { '13-17': 4, '18-24': 28, '25-34': 34, '35-44': 20, '45-54': 10, '55+': 4 }, countries: { US: 70, CA: 7, UK: 6, MX: 5, AU: 5, DE: 3 } },
+  },
+  emma: {
+    ig: { gender: { male: 24, female: 76 }, age: { '13-17': 2, '18-24': 14, '25-34': 32, '35-44': 30, '45-54': 16, '55+': 6 }, countries: { US: 85, CA: 5, UK: 4, AU: 3, DE: 2, MX: 1 } },
+    tt: { gender: { male: 30, female: 70 }, age: { '13-17': 5, '18-24': 22, '25-34': 34, '35-44': 24, '45-54': 10, '55+': 5 }, countries: { US: 80, CA: 6, UK: 5, AU: 4, DE: 3, MX: 2 } },
+    yt: { gender: { male: 26, female: 74 }, age: { '13-17': 2, '18-24': 10, '25-34': 28, '35-44': 34, '45-54': 18, '55+': 8 }, countries: { US: 82, CA: 6, UK: 5, AU: 3, DE: 2, MX: 1 } },
+  },
+  omar: {
+    ig: { gender: { male: 70, female: 30 }, age: { '13-17': 3, '18-24': 18, '25-34': 32, '35-44': 28, '45-54': 14, '55+': 5 }, countries: { US: 60, UK: 8, CA: 7, IN: 6, DE: 5, AU: 4 } },
+    tt: { gender: { male: 72, female: 28 }, age: { '13-17': 6, '18-24': 28, '25-34': 32, '35-44': 20, '45-54': 10, '55+': 4 }, countries: { US: 55, UK: 9, IN: 8, CA: 7, DE: 6, AU: 5 } },
+    yt: { gender: { male: 75, female: 25 }, age: { '13-17': 2, '18-24': 14, '25-34': 30, '35-44': 30, '45-54': 17, '55+': 7 }, countries: { US: 58, UK: 8, IN: 8, CA: 7, DE: 6, AU: 4 } },
+  },
+  mia: {
+    ig: { gender: { male: 35, female: 65 }, age: { '13-17': 5, '18-24': 30, '25-34': 34, '35-44': 18, '45-54': 9, '55+': 4 }, countries: { US: 48, BR: 10, UK: 8, CA: 7, MX: 6, FR: 5 } },
+    tt: { gender: { male: 40, female: 60 }, age: { '13-17': 9, '18-24': 36, '25-34': 28, '35-44': 16, '45-54': 7, '55+': 4 }, countries: { US: 42, BR: 12, UK: 9, MX: 8, CA: 7, FR: 6 } },
+    yt: { gender: { male: 38, female: 62 }, age: { '13-17': 3, '18-24': 24, '25-34': 34, '35-44': 22, '45-54': 12, '55+': 5 }, countries: { US: 45, BR: 11, UK: 9, CA: 8, MX: 7, FR: 5 } },
+  },
+  ben: {
+    ig: { gender: { male: 55, female: 45 }, age: { '13-17': 14, '18-24': 36, '25-34': 26, '35-44': 14, '45-54': 7, '55+': 3 }, countries: { US: 72, CA: 7, UK: 6, AU: 5, DE: 4, BR: 3 } },
+    tt: { gender: { male: 52, female: 48 }, age: { '13-17': 20, '18-24': 38, '25-34': 22, '35-44': 12, '45-54': 5, '55+': 3 }, countries: { US: 68, CA: 8, UK: 7, AU: 5, DE: 4, BR: 4 } },
+    yt: { gender: { male: 58, female: 42 }, age: { '13-17': 10, '18-24': 32, '25-34': 28, '35-44': 18, '45-54': 8, '55+': 4 }, countries: { US: 70, CA: 7, UK: 7, AU: 5, DE: 4, BR: 3 } },
+  },
+}
+
+/** Parse enrichment display values like "4.2%", "8.5K", "1.2M" to numbers */
+export function parseEnrichmentValue(raw: string): number {
+  if (!raw || raw === '—') return 0
+  const cleaned = raw.replace(/[,%]/g, '')
+  const multipliers: Record<string, number> = { K: 1_000, M: 1_000_000, B: 1_000_000_000 }
+  const suffix = cleaned.slice(-1).toUpperCase()
+  if (multipliers[suffix]) {
+    return parseFloat(cleaned.slice(0, -1)) * multipliers[suffix]
+  }
+  return parseFloat(cleaned) || 0
+}
+
+/** Format a number back to display string matching enrichment style */
+export function formatEnrichmentValue(val: number, isPercent: boolean): string {
+  if (isPercent) return `${val}%`
+  if (val >= 1_000_000) return `${(val / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
+  if (val >= 1_000) return `${(val / 1_000).toFixed(1).replace(/\.0$/, '')}K`
+  return String(val)
+}
+
+export interface StructuredFilterDef {
+  key: string
+  label: string
+  category: string
+  platform?: 'ig' | 'tt' | 'yt'
+  filterType: 'range' | 'multi-select' | 'audience-threshold'
+  enrichmentKey?: string
+  isPercent?: boolean
+  min?: number
+  max?: number
+  step?: number
+  options?: string[]  // for multi-select and audience-threshold segments
+  audienceField?: 'gender' | 'age' | 'countries'
+}
+
+export const STRUCTURED_FILTERS: StructuredFilterDef[] = [
+  // Instagram
+  { key: 'sf_igEngRate', label: 'Eng. Rate', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igEngRate', isPercent: true, min: 0, max: 12, step: 0.5 },
+  { key: 'sf_igAvgLikes', label: 'Avg Likes', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igAvgLikes', min: 0, max: 30_000, step: 1000 },
+  { key: 'sf_igAvgStoryViews', label: 'Avg Story Views', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igAvgStoryViews', min: 0, max: 100_000, step: 1000 },
+  { key: 'sf_igAvgReelViews', label: 'Avg Reel Views', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igAvgReelViews', min: 0, max: 500_000, step: 5000 },
+  { key: 'sf_igAvgReach', label: 'Avg Reach', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igAvgReach', min: 0, max: 1_000_000, step: 5000 },
+  { key: 'sf_igFollowers', label: 'Followers', category: 'Instagram', platform: 'ig', filterType: 'range', enrichmentKey: 'igFollowers', min: 0, max: 2_000_000, step: 10_000 },
+  // TikTok
+  { key: 'sf_ttEngRate', label: 'Eng. Rate', category: 'TikTok', platform: 'tt', filterType: 'range', enrichmentKey: 'ttEngRate', isPercent: true, min: 0, max: 15, step: 0.5 },
+  { key: 'sf_ttAvgViews', label: 'Avg Views', category: 'TikTok', platform: 'tt', filterType: 'range', enrichmentKey: 'ttAvgViews', min: 0, max: 250_000, step: 5000 },
+  { key: 'sf_ttFollowers', label: 'Followers', category: 'TikTok', platform: 'tt', filterType: 'range', enrichmentKey: 'ttFollowers', min: 0, max: 2_000_000, step: 10_000 },
+  // YouTube
+  { key: 'sf_ytAvgViews', label: 'Avg Views', category: 'YouTube', platform: 'yt', filterType: 'range', enrichmentKey: 'ytAvgViews', min: 0, max: 100_000, step: 5000 },
+  { key: 'sf_ytSubs', label: 'Subscribers', category: 'YouTube', platform: 'yt', filterType: 'range', enrichmentKey: 'ytSubs', min: 0, max: 1_500_000, step: 10_000 },
+  // Instagram Audience
+  { key: 'sf_igAudGender', label: 'Gender', category: 'Instagram', platform: 'ig', filterType: 'audience-threshold', audienceField: 'gender', options: ['Male', 'Female'] },
+  { key: 'sf_igAudAge', label: 'Age', category: 'Instagram', platform: 'ig', filterType: 'audience-threshold', audienceField: 'age', options: ['13-17', '18-24', '25-34', '35-44', '45-54', '55+'] },
+  { key: 'sf_igAudCountry', label: 'Top Countries', category: 'Instagram', platform: 'ig', filterType: 'audience-threshold', audienceField: 'countries', options: ['US', 'UK', 'CA', 'MX', 'BR', 'DE', 'FR', 'AU', 'IN'] },
+  // TikTok Audience
+  { key: 'sf_ttAudGender', label: 'Gender', category: 'TikTok', platform: 'tt', filterType: 'audience-threshold', audienceField: 'gender', options: ['Male', 'Female'] },
+  { key: 'sf_ttAudAge', label: 'Age', category: 'TikTok', platform: 'tt', filterType: 'audience-threshold', audienceField: 'age', options: ['13-17', '18-24', '25-34', '35-44', '45-54', '55+'] },
+  { key: 'sf_ttAudCountry', label: 'Top Countries', category: 'TikTok', platform: 'tt', filterType: 'audience-threshold', audienceField: 'countries', options: ['US', 'UK', 'CA', 'MX', 'BR', 'DE', 'FR', 'AU', 'IN'] },
+  // YouTube Audience
+  { key: 'sf_ytAudGender', label: 'Gender', category: 'YouTube', platform: 'yt', filterType: 'audience-threshold', audienceField: 'gender', options: ['Male', 'Female'] },
+  { key: 'sf_ytAudAge', label: 'Age', category: 'YouTube', platform: 'yt', filterType: 'audience-threshold', audienceField: 'age', options: ['13-17', '18-24', '25-34', '35-44', '45-54', '55+'] },
+  { key: 'sf_ytAudCountry', label: 'Top Countries', category: 'YouTube', platform: 'yt', filterType: 'audience-threshold', audienceField: 'countries', options: ['US', 'UK', 'CA', 'MX', 'BR', 'DE', 'FR', 'AU', 'IN'] },
+  // Profile (options populated after allCreators is defined)
+  { key: 'sf_location', label: 'Location', category: 'Profile', filterType: 'multi-select', options: [] },
+  { key: 'sf_vertical', label: 'Content Category', category: 'Profile', filterType: 'multi-select', options: [] },
+  { key: 'sf_brandDeals', label: 'Brand Deals', category: 'Profile', filterType: 'range', enrichmentKey: 'brandDeals', min: 0, max: 35, step: 1 },
+]
+
+/** Get the creator's follower count from their profile string (e.g. "285K") for follower filters */
+export function getCreatorFollowers(creator: BaseCreator, platform: 'ig' | 'tt' | 'yt'): number {
+  const raw = platform === 'ig' ? creator.ig : platform === 'tt' ? creator.tt : creator.yt
+  return parseEnrichmentValue(raw)
+}
+
+/** Evaluate whether a creator passes a structured filter criterion */
+export function evaluateStructuredCriterion(creatorId: string, creator: BaseCreator, criterion: CriterionDef): boolean {
+  // Multi-select: location or vertical
+  if (criterion.filterType === 'multi-select' && criterion.selectValues) {
+    if (criterion.key.startsWith('sf_location')) {
+      return criterion.selectValues.includes(creator.location)
+    }
+    if (criterion.key.startsWith('sf_vertical')) {
+      return creator.verticals.some((v) => criterion.selectValues!.includes(v))
+    }
+    return true
+  }
+
+  // Audience threshold: e.g. "IG Female ≥ 60%"
+  if (criterion.filterType === 'audience-threshold' && criterion.platform && criterion.audienceField && criterion.audienceSegment && criterion.value != null) {
+    const platformData = AUDIENCE_DATA[creatorId]?.[criterion.platform]
+    if (!platformData) return false
+
+    let percentage: number
+    if (criterion.audienceField === 'gender') {
+      percentage = criterion.audienceSegment === 'Male' ? platformData.gender.male : platformData.gender.female
+    } else if (criterion.audienceField === 'age') {
+      percentage = platformData.age[criterion.audienceSegment] ?? 0
+    } else {
+      percentage = platformData.countries[criterion.audienceSegment] ?? 0
+    }
+
+    return percentage >= (criterion.value as number)
+  }
+
+  // Range filter
+  if (criterion.filterType === 'range' && criterion.enrichmentKey != null && criterion.value != null) {
+    let rawValue: number
+
+    // Follower filters use profile data, not enrichment data
+    if (criterion.enrichmentKey === 'igFollowers') {
+      rawValue = getCreatorFollowers(creator, 'ig')
+    } else if (criterion.enrichmentKey === 'ttFollowers') {
+      rawValue = getCreatorFollowers(creator, 'tt')
+    } else {
+      const enrichment = ENRICHMENT_DATA[creatorId]
+      if (!enrichment) return false
+      const raw = enrichment[criterion.enrichmentKey]
+      if (!raw || raw === '—') return false
+      rawValue = parseEnrichmentValue(raw)
+    }
+
+    const threshold = criterion.value as number
+    if (criterion.operator === 'between' && criterion.valueTo != null) {
+      return rawValue >= threshold && rawValue <= criterion.valueTo
+    }
+    if (criterion.operator === 'gte') return rawValue >= threshold
+    if (criterion.operator === 'lte') return rawValue <= threshold
+    return rawValue === threshold
+  }
+
+  return true
 }
 
 export const CRITERION_COLORS = ['#8b5cf6', '#3b82f6', '#f59e0b', '#ef4444', '#10b981', '#ec4899']
@@ -85,6 +325,21 @@ export interface CreatorEvaluation {
     description: string
   }
 }
+
+export interface ThinkingStep {
+  text: string
+  result: string
+  delay: number
+  criterionKey?: string
+}
+
+export const THINKING_STEPS: ThinkingStep[] = [
+  { text: 'Analyzing your query...', result: 'Identified 3 search criteria', delay: 800 },
+  { text: 'Searching notes for lifestyle content...', result: 'Found 84 matching notes', delay: 900, criterionKey: 'lifestyleFit' },
+  { text: 'Searching notes for parenting signals...', result: 'Found 178 matching notes', delay: 900, criterionKey: 'hasChildren' },
+  { text: 'Searching for Austin-area creators...', result: 'Found 7 matching locations', delay: 900, criterionKey: 'basedInAustin' },
+  { text: 'Cross-referencing results...', result: 'Re-ranking 18 creators', delay: 700 },
+]
 
 export const QUERY_CRITERIA: CriterionDef[] = [
   { key: 'lifestyleFit', label: 'Lifestyle Fit' },
@@ -405,6 +660,12 @@ export const allCreators: BaseCreator[] = [
     ],
   },
 ]
+
+// Populate multi-select options now that allCreators is defined
+const _locationFilter = STRUCTURED_FILTERS.find((f) => f.key === 'sf_location')
+if (_locationFilter) _locationFilter.options = [...new Set(allCreators.map((c) => c.location))].sort()
+const _verticalFilter = STRUCTURED_FILTERS.find((f) => f.key === 'sf_vertical')
+if (_verticalFilter) _verticalFilter.options = [...new Set(allCreators.flatMap((c) => c.verticals))].sort()
 
 export const EVALUATIONS: CreatorEvaluation[] = [
   {

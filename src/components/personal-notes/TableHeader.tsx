@@ -4,9 +4,9 @@ import PlatformIcon from './PlatformIcon'
 
 export type SearchPhase = 'idle' | 'decomposing' | 'investigating' | 'settling' | 'results'
 
-const FLUID_COLS = '32px minmax(180px,1.8fr) minmax(140px,1.2fr) minmax(120px,1fr) 64px 64px 64px minmax(140px,1.2fr)'
-const FIXED_COLS = '32px 180px 140px 120px 56px 56px 56px 120px'
-const BASE_W = 760
+const FLUID_COLS = '36px minmax(200px,1.8fr) minmax(160px,1.2fr) minmax(140px,1fr) 72px 72px 72px minmax(160px,1.2fr)'
+const FIXED_COLS = '36px 200px 160px 140px 72px 72px 72px 160px'
+const BASE_W = 912
 const CRITERIA_COL_W = 85
 const ENRICHMENT_COL_W = 100
 const DIVIDER_W = 20
@@ -18,13 +18,15 @@ interface Props {
 }
 
 export default function TableHeader({ activeCriteria, activeEnrichments, searchPhase }: Props) {
-  const hasCriteria = activeCriteria.length > 0 && searchPhase !== 'idle'
+  const hasNLCriteria = activeCriteria.some(c => !c.filterType) && searchPhase !== 'idle'
+  const hasStructuredCriteria = activeCriteria.some(c => c.filterType != null)
+  const hasCriteria = hasNLCriteria || hasStructuredCriteria
   const hasExtraCols = hasCriteria || activeEnrichments.length > 0
   const isDecomposing = searchPhase === 'decomposing'
   const staggerDelays = activeCriteria.map((_, i) => i * 0.3)
 
   const criteriaWidth = hasCriteria ? DIVIDER_W + activeCriteria.length * CRITERIA_COL_W : 0
-  const enrichmentWidth = hasCriteria && activeEnrichments.length > 0 ? DIVIDER_W + activeEnrichments.length * ENRICHMENT_COL_W : 0
+  const enrichmentWidth = activeEnrichments.length > 0 ? DIVIDER_W + activeEnrichments.length * ENRICHMENT_COL_W : 0
 
   return (
     <div

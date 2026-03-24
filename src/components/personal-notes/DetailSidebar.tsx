@@ -1,14 +1,15 @@
-import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Check, ChevronLeft, ExternalLink, Link2, NotebookPen, Plus, Sparkles, Video, X } from 'lucide-react'
-import { FaGoogle, FaLinkedinIn } from 'react-icons/fa6'
+import { AlertTriangle, Check, ChevronLeft, ExternalLink, Link2, NotebookPen, Plus, Video, X } from 'lucide-react'
+import { FaLinkedinIn } from 'react-icons/fa6'
 import { HiOutlineGlobeAlt } from 'react-icons/hi2'
 import { IoMailSharp } from 'react-icons/io5'
 import { TbMapPin } from 'react-icons/tb'
-import type { BaseCreator, CriteriaStatus, CriterionDef, CreatorEvaluation, EnrichmentDef, ReferenceType } from '../../data/creators'
-import { AVAILABLE_ENRICHMENTS, CRITERION_COLORS } from '../../data/creators'
+import type { BaseCreator, CriteriaStatus, CriterionDef, CreatorEvaluation, EnrichmentDef, ReferenceType, ThinkingStep } from '../../data/creators'
+import { AVAILABLE_ENRICHMENTS, CRITERION_COLORS, THINKING_STEPS } from '../../data/creators'
 import type { SearchPhase } from './TableHeader'
+import ThinkingPanel from './ThinkingPanel'
 import PlatformIcon from './PlatformIcon'
+import FilterPicker from './FilterPicker'
 
 function ReferenceIcon({ type }: { type: ReferenceType }) {
   const sz = 15
@@ -34,14 +35,14 @@ interface Props {
   searchPhase: SearchPhase
   matchCount: number
   totalCount: number
-  limitingCriterion: string
-  broadenedCount: number
+  criterionMatchCounts: Map<string, number>
   onClose: () => void
   onDeselectCreator: () => void
   onRemoveCriterion: (key: string) => void
-  onAddCriterion: (label: string) => void
-  onBroadenSearch: () => void
+  onAddStructuredCriterion: (criterion: CriterionDef) => void
   onToggleEnrichment: (enrichment: EnrichmentDef) => void
+  onThinkingStepComplete: (step: ThinkingStep, index: number) => void
+  onThinkingComplete: () => void
 }
 
 function StatusIcon({ status }: { status: CriteriaStatus }) {
@@ -52,8 +53,9 @@ function StatusIcon({ status }: { status: CriteriaStatus }) {
 
 function SearchContextView({
   query, activeCriteria, activeEnrichments, searchPhase,
-  matchCount, totalCount, limitingCriterion, broadenedCount,
-  onRemoveCriterion, onAddCriterion, onBroadenSearch, onToggleEnrichment,
+  matchCount, totalCount, criterionMatchCounts,
+  onRemoveCriterion, onAddStructuredCriterion, onToggleEnrichment,
+  onThinkingStepComplete, onThinkingComplete,
 }: {
   query: string
   activeCriteria: CriterionDef[]
@@ -61,27 +63,25 @@ function SearchContextView({
   searchPhase: SearchPhase
   matchCount: number
   totalCount: number
-  limitingCriterion: string
-  broadenedCount: number
+  criterionMatchCounts: Map<string, number>
   onRemoveCriterion: (key: string) => void
-  onAddCriterion: (label: string) => void
-  onBroadenSearch: () => void
+  onAddStructuredCriterion: (criterion: CriterionDef) => void
   onToggleEnrichment: (enrichment: EnrichmentDef) => void
+  onThinkingStepComplete: (step: ThinkingStep, index: number) => void
+  onThinkingComplete: () => void
 }) {
-  const [isAddingCriterion, setIsAddingCriterion] = useState(false)
-  const [newCriterionText, setNewCriterionText] = useState('')
   const isComplete = searchPhase === 'settling' || searchPhase === 'results'
 
   const activeEnrichmentKeys = new Set(activeEnrichments.map((e) => e.key))
 
-  function handleAddConfirm() {
-    const trimmed = newCriterionText.trim()
-    if (trimmed) {
-      onAddCriterion(trimmed)
-      setNewCriterionText('')
-      setIsAddingCriterion(false)
-    }
-  }
+  // Find the most-limiting criterion (lowest match count, only when 2+ criteria)
+  const mostLimitingKey = activeCriteria.length >= 2
+    ? activeCriteria.reduce<string | null>((limitingKey, c) => {
+        const count = criterionMatchCounts.get(c.key) ?? totalCount
+        const limitingCount = limitingKey ? (criterionMatchCounts.get(limitingKey) ?? totalCount) : totalCount
+        return count < limitingCount ? c.key : limitingKey
+      }, null)
+    : null
 
   return (
     <motion.div
@@ -102,15 +102,31 @@ function SearchContextView({
           </div>
         </div>
 
-        {/* Query text box */}
-        <div className="rounded-lg border border-border-card bg-bg-card-hover/30 px-3 py-2.5">
-          <p className="text-[12px] text-text-primary leading-relaxed m-0">{query}</p>
-        </div>
+        {/* Query text box — only when there's an NL search */}
+        {query && (
+          <div className="rounded-lg border border-border-card bg-bg-card-hover/30 px-3 py-2.5">
+            <p className="text-[12px] text-text-primary leading-relaxed m-0">{query}</p>
+          </div>
+        )}
 
-        {/* Extracted criteria with colored left borders */}
+        {/* Thinking panel during decomposing */}
+        <AnimatePresence>
+          {searchPhase === 'decomposing' && (
+            <ThinkingPanel
+              steps={THINKING_STEPS}
+              onStepComplete={onThinkingStepComplete}
+              onAllComplete={onThinkingComplete}
+            />
+          )}
+        </AnimatePresence>
+
+        {/* Extracted criteria with colored left borders + match counts */}
         <div className="flex flex-col gap-1.5">
           {activeCriteria.map((c, i) => {
             const color = CRITERION_COLORS[i % CRITERION_COLORS.length]
+            const isStructured = !!c.filterType
+            const count = criterionMatchCounts.get(c.key)
+            const isMostLimiting = c.key === mostLimitingKey
             return (
               <motion.div
                 key={c.key}
@@ -118,11 +134,25 @@ function SearchContextView({
                 initial={{ opacity: 0, x: -8 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -8 }}
-                className="flex items-center gap-2.5 pl-3 pr-2 py-2 rounded-md bg-bg-card-hover/40 border-l-[3px]"
+                className="flex items-center gap-2 pl-3 pr-2 py-2 rounded-md bg-bg-card-hover/40 border-l-[3px]"
                 style={{ borderLeftColor: color }}
               >
+                {isStructured && c.platform && (
+                  <PlatformIcon platform={c.platform} size={12} />
+                )}
+                {isStructured && !c.platform && (
+                  <svg className="w-3 h-3 text-text-tertiary shrink-0" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M2 4h12M4 8h8M6 12h4" strokeLinecap="round" />
+                  </svg>
+                )}
                 <span className="text-[12px] text-text-primary flex-1 min-w-0">{c.label}</span>
-                {activeCriteria.length > 1 && (
+                {count !== undefined && isComplete && (
+                  <span className={`flex items-center gap-1 text-[10px] font-medium shrink-0 ${isMostLimiting ? 'text-brand-amber' : 'text-text-tertiary'}`}>
+                    {isMostLimiting && <AlertTriangle className="w-3 h-3" />}
+                    {count} match
+                  </span>
+                )}
+                {(activeCriteria.length > 1 || isStructured) && (
                   <button
                     onClick={() => onRemoveCriterion(c.key)}
                     className="w-5 h-5 flex items-center justify-center rounded hover:bg-bg-card-hover text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer shrink-0"
@@ -135,54 +165,15 @@ function SearchContextView({
           })}
         </div>
 
-        {/* Add criterion */}
-        <AnimatePresence>
-          {isAddingCriterion ? (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="overflow-hidden"
-            >
-              <div className="flex items-center gap-2 rounded-lg border border-brand-purple/30 bg-brand-purple/5 px-3 py-2">
-                <input
-                  autoFocus
-                  value={newCriterionText}
-                  onChange={(e) => setNewCriterionText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleAddConfirm()
-                    if (e.key === 'Escape') { setIsAddingCriterion(false); setNewCriterionText('') }
-                  }}
-                  placeholder="e.g. engagement rate above 3%"
-                  className="flex-1 bg-transparent text-[12px] text-text-primary placeholder:text-text-tertiary outline-none min-w-0"
-                />
-                <button
-                  onClick={handleAddConfirm}
-                  disabled={!newCriterionText.trim()}
-                  className="text-[11px] font-medium text-brand-purple hover:text-brand-purple/80 disabled:opacity-40 cursor-pointer disabled:cursor-default transition-colors"
-                >
-                  Add
-                </button>
-                <button
-                  onClick={() => { setIsAddingCriterion(false); setNewCriterionText('') }}
-                  className="text-text-tertiary hover:text-text-secondary cursor-pointer transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </motion.div>
-          ) : null}
-        </AnimatePresence>
+        {/* Structured filter picker */}
+        <FilterPicker
+          onAddStructuredCriterion={onAddStructuredCriterion}
+          onRemoveCriterion={onRemoveCriterion}
+          activeCriteria={activeCriteria}
+        />
 
-        {/* Bottom actions row */}
+        {/* Exclude creators action */}
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => setIsAddingCriterion(true)}
-            className="flex items-center gap-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add Criteria
-          </button>
           <button className="flex items-center gap-1 text-[11px] text-text-tertiary hover:text-text-secondary transition-colors cursor-pointer">
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 16 16" stroke="currentColor" strokeWidth="1.5"><circle cx="8" cy="8" r="6.5"/><path d="M6 6L10 10M10 6L6 10" strokeLinecap="round"/></svg>
             Exclude Creators
@@ -204,35 +195,6 @@ function SearchContextView({
           <span className="text-[10px] text-text-tertiary">
             Data from 4 web and social media intelligence sources
           </span>
-        </motion.div>
-      )}
-
-      {/* Broaden / narrow suggestion */}
-      {searchPhase === 'results' && activeCriteria.length > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="rounded-lg bg-brand-purple/5 border border-brand-purple/15 p-3.5 flex flex-col gap-3"
-        >
-          <div className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand-purple" />
-            <span className="text-[11px] font-semibold text-brand-purple">Suggestion</span>
-          </div>
-          <p className="text-[11px] text-[#c4b5fd] leading-relaxed m-0">
-            Only {matchCount} of {totalCount} creators matched all criteria. &ldquo;{limitingCriterion}&rdquo; is the most limiting — {broadenedCount} more would match without it.
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={onBroadenSearch}
-              className="h-7 px-3 rounded-md bg-brand-purple/15 border border-brand-purple/30 text-[11px] font-medium text-brand-purple hover:bg-brand-purple/25 transition-colors cursor-pointer"
-            >
-              Broaden search
-            </button>
-            <button className="h-7 px-3 rounded-md bg-bg-card-hover border border-border-card text-[11px] font-medium text-text-secondary hover:text-text-primary transition-colors cursor-pointer">
-              Keep as is
-            </button>
-          </div>
         </motion.div>
       )}
 
@@ -388,12 +350,13 @@ function CreatorDetailView({ creator, evaluation, activeCriteria, onBack }: {
           {activeCriteria.map((c, i) => {
             const result = evaluation.criteria[c.key]
             if (!result) return null
-            const color = CRITERION_COLORS[i % CRITERION_COLORS.length]
+            const criterionColor = CRITERION_COLORS[i % CRITERION_COLORS.length]
 
             return (
               <div key={c.key} className="px-5 py-3 border-t border-border-card/50">
                 {/* Status + criterion label */}
                 <div className="flex items-center gap-2 mb-2">
+                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: criterionColor }} />
                   <StatusIcon status={result.status} />
                   <span className="text-[12px] font-medium text-text-primary">{c.label}</span>
                 </div>
@@ -435,8 +398,9 @@ function CreatorDetailView({ creator, evaluation, activeCriteria, onBack }: {
 
 export default function DetailSidebar({
   isOpen, creator, evaluation, query, activeCriteria, activeEnrichments, searchPhase,
-  matchCount, totalCount, limitingCriterion, broadenedCount,
-  onClose, onDeselectCreator, onRemoveCriterion, onAddCriterion, onBroadenSearch, onToggleEnrichment,
+  matchCount, totalCount, criterionMatchCounts,
+  onClose, onDeselectCreator, onRemoveCriterion, onAddStructuredCriterion, onToggleEnrichment,
+  onThinkingStepComplete, onThinkingComplete,
 }: Props) {
   return (
     <motion.div
@@ -447,7 +411,7 @@ export default function DetailSidebar({
       <div className="w-[420px] h-full flex flex-col">
         <div className="flex items-center justify-between h-11 px-4 border-b border-border-card shrink-0">
           <span className="text-[11px] font-semibold text-text-secondary uppercase tracking-wider">
-            {creator ? 'Creator Details' : 'Search Context'}
+            {creator ? 'Creator Details' : query ? 'Search Context' : 'Filters'}
           </span>
           <button
             onClick={onClose}
@@ -474,12 +438,12 @@ export default function DetailSidebar({
                 searchPhase={searchPhase}
                 matchCount={matchCount}
                 totalCount={totalCount}
-                limitingCriterion={limitingCriterion}
-                broadenedCount={broadenedCount}
+                criterionMatchCounts={criterionMatchCounts}
                 onRemoveCriterion={onRemoveCriterion}
-                onAddCriterion={onAddCriterion}
-                onBroadenSearch={onBroadenSearch}
+                onAddStructuredCriterion={onAddStructuredCriterion}
                 onToggleEnrichment={onToggleEnrichment}
+                onThinkingStepComplete={onThinkingStepComplete}
+                onThinkingComplete={onThinkingComplete}
               />
             )}
           </AnimatePresence>

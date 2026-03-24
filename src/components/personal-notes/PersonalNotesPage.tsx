@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { allCreators, QUERY_CRITERIA, EVALUATIONS } from '../../data/creators'
-import type { CriterionDef, EnrichmentDef } from '../../data/creators'
+import { allCreators, QUERY_CRITERIA, EVALUATIONS, AVAILABLE_ENRICHMENTS, evaluateStructuredCriterion } from '../../data/creators'
+import type { CriterionDef, EnrichmentDef, ThinkingStep } from '../../data/creators'
 import { useInvestigation } from '../../hooks/useInvestigation'
 import Sidebar from '../shared/Sidebar'
 import SearchHeader from './SearchHeader'
@@ -8,7 +8,7 @@ import TableHeader from './TableHeader'
 import type { SearchPhase } from './TableHeader'
 import ResultsTable from './ResultsTable'
 import DetailSidebar from './DetailSidebar'
-import { Search, Sparkles } from 'lucide-react'
+import { Filter, Search, Sparkles } from 'lucide-react'
 
 export default function PersonalNotesPage() {
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null)
@@ -16,7 +16,7 @@ export default function PersonalNotesPage() {
   const [searchPhase, setSearchPhase] = useState<SearchPhase>('idle')
   const [activeCriteria, setActiveCriteria] = useState<CriterionDef[]>([])
   const [activeEnrichments, setActiveEnrichments] = useState<EnrichmentDef[]>([])
-  const [dimmedCreatorIds, setDimmedCreatorIds] = useState<Set<string>>(new Set())
+  const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
 
   const investigation = useInvestigation(allCreators, activeCriteria, EVALUATIONS)
 
@@ -32,22 +32,30 @@ export default function PersonalNotesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Phase: decomposing → investigating
-  useEffect(() => {
-    if (searchPhase !== 'decomposing') return
-    const timer = setTimeout(() => {
-      setSearchPhase('investigating')
-      investigation.start()
-    }, 1500)
-    return () => clearTimeout(timer)
-  }, [searchPhase, investigation.start])
+  // ThinkingPanel step complete: add criterion if step has one
+  const handleThinkingStepComplete = useCallback((step: ThinkingStep) => {
+    if (step.criterionKey) {
+      const criterion = QUERY_CRITERIA.find((c) => c.key === step.criterionKey)
+      if (criterion) {
+        setActiveCriteria((prev) => {
+          if (prev.some((c) => c.key === criterion.key)) return prev
+          return [...prev, criterion]
+        })
+      }
+    }
+  }, [])
+
+  // ThinkingPanel all steps done: transition to investigating
+  const handleThinkingComplete = useCallback(() => {
+    setSearchPhase('investigating')
+    investigation.start()
+  }, [investigation.start])
 
   // Phase: investigating → settling (when investigation completes)
   useEffect(() => {
     if (searchPhase !== 'investigating') return
     if (!investigation.isComplete) return
     setSearchPhase('settling')
-    recomputeDimmed(activeCriteria)
   }, [searchPhase, investigation.isComplete])
 
   // Phase: settling → results
@@ -59,30 +67,43 @@ export default function PersonalNotesPage() {
     return () => clearTimeout(timer)
   }, [searchPhase])
 
-  // Recompute which creators are dimmed based on current criteria
-  function recomputeDimmed(criteria: CriterionDef[]) {
-    const dimmed = new Set<string>()
+  // Reactive excluded IDs: creators that don't match ALL active criteria
+  const excludedCreatorIds = useMemo(() => {
+    if (activeCriteria.length === 0) return new Set<string>()
     const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
+    const excluded = new Set<string>()
     for (const creator of allCreators) {
       const evaluation = evaluationMap.get(creator.id)
-      if (!evaluation) continue
-      // Count how many criteria this creator fails on
-      let noMatchCount = 0
-      let knownCriteria = 0
-      for (const c of criteria) {
+      const allMatch = activeCriteria.every((c) => {
+        if (c.filterType) return evaluateStructuredCriterion(creator.id, creator, c)
+        if (!evaluation) return false
         const result = evaluation.criteria[c.key]
-        if (result) {
-          knownCriteria++
-          if (result.status === 'no-match') noMatchCount++
+        return result && result.status !== 'no-match'
+      })
+      if (!allMatch) excluded.add(creator.id)
+    }
+    return excluded
+  }, [activeCriteria])
+
+  // Per-criterion match counts for sidebar pills
+  const criterionMatchCounts = useMemo(() => {
+    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
+    const counts = new Map<string, number>()
+    for (const c of activeCriteria) {
+      let count = 0
+      for (const creator of allCreators) {
+        if (c.filterType) {
+          if (evaluateStructuredCriterion(creator.id, creator, c)) count++
+        } else {
+          const evaluation = evaluationMap.get(creator.id)
+          const result = evaluation?.criteria[c.key]
+          if (result && result.status !== 'no-match') count++
         }
       }
-      // Dimmed if majority of known criteria are no-match
-      if (knownCriteria > 0 && noMatchCount > knownCriteria / 2) {
-        dimmed.add(creator.id)
-      }
+      counts.set(c.key, count)
     }
-    setDimmedCreatorIds(dimmed)
-  }
+    return counts
+  }, [activeCriteria])
 
   const handleSelect = useCallback((id: string) => {
     setSelectedCreatorId((prev) => (prev === id ? null : id))
@@ -91,8 +112,7 @@ export default function PersonalNotesPage() {
   const handleSearch = useCallback(() => {
     if (query.trim()) {
       setSelectedCreatorId(null)
-      setDimmedCreatorIds(new Set())
-      setActiveCriteria(QUERY_CRITERIA)
+      setActiveCriteria([])
       setActiveEnrichments([])
       setSearchPhase('decomposing')
     }
@@ -101,76 +121,33 @@ export default function PersonalNotesPage() {
   const handleReset = useCallback(() => {
     setQuery('')
     setSelectedCreatorId(null)
-    setDimmedCreatorIds(new Set())
     setActiveCriteria([])
     setActiveEnrichments([])
     setSearchPhase('idle')
   }, [])
 
   const handleRemoveCriterion = useCallback((key: string) => {
+    setActiveCriteria((prev) => prev.filter((c) => c.key !== key))
+  }, [])
+
+  const handleAddStructuredCriterion = useCallback((criterion: CriterionDef) => {
     setActiveCriteria((prev) => {
-      const next = prev.filter((c) => c.key !== key)
-      // Recompute dimming with remaining criteria
-      setTimeout(() => recomputeDimmed(next), 0)
-      return next
+      const idx = prev.findIndex((c) => c.key === criterion.key)
+      return idx >= 0
+        ? prev.map((c, i) => i === idx ? criterion : c)
+        : [...prev, criterion]
     })
+    // Auto-enable matching enrichment column
+    if (criterion.enrichmentKey) {
+      const matchingEnrichment = AVAILABLE_ENRICHMENTS.find((e) => e.key === criterion.enrichmentKey)
+      if (matchingEnrichment) {
+        setActiveEnrichments((prev) => {
+          if (prev.some((e) => e.key === matchingEnrichment.key)) return prev
+          return [...prev, matchingEnrichment]
+        })
+      }
+    }
   }, [])
-
-  const handleAddCriterion = useCallback((label: string) => {
-    const key = `custom_${Date.now()}`
-    const newCriterion: CriterionDef = { key, label }
-    setActiveCriteria((prev) => [...prev, newCriterion])
-  }, [])
-
-  // Compute limiting criterion dynamically
-  const limitingCriterion = useMemo(() => {
-    if (activeCriteria.length === 0) return ''
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
-    let maxNoMatch = 0
-    let limitingLabel = activeCriteria[0].label
-
-    for (const c of activeCriteria) {
-      let noMatchCount = 0
-      for (const creator of allCreators) {
-        const evaluation = evaluationMap.get(creator.id)
-        const result = evaluation?.criteria[c.key]
-        if (result && result.status === 'no-match') noMatchCount++
-      }
-      if (noMatchCount > maxNoMatch) {
-        maxNoMatch = noMatchCount
-        limitingLabel = c.label
-      }
-    }
-    return limitingLabel
-  }, [activeCriteria])
-
-  // Compute limiting criterion key for broaden
-  const limitingCriterionKey = useMemo(() => {
-    if (activeCriteria.length === 0) return ''
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
-    let maxNoMatch = 0
-    let limitingKey = activeCriteria[0].key
-
-    for (const c of activeCriteria) {
-      let noMatchCount = 0
-      for (const creator of allCreators) {
-        const evaluation = evaluationMap.get(creator.id)
-        const result = evaluation?.criteria[c.key]
-        if (result && result.status === 'no-match') noMatchCount++
-      }
-      if (noMatchCount > maxNoMatch) {
-        maxNoMatch = noMatchCount
-        limitingKey = c.key
-      }
-    }
-    return limitingKey
-  }, [activeCriteria])
-
-  const handleBroadenSearch = useCallback(() => {
-    if (limitingCriterionKey && activeCriteria.length > 1) {
-      handleRemoveCriterion(limitingCriterionKey)
-    }
-  }, [limitingCriterionKey, activeCriteria.length, handleRemoveCriterion])
 
   const handleToggleEnrichment = useCallback((enrichment: EnrichmentDef) => {
     setActiveEnrichments((prev) => {
@@ -192,8 +169,11 @@ export default function PersonalNotesPage() {
     let count = 0
     for (const creator of allCreators) {
       const evaluation = evaluationMap.get(creator.id)
-      if (!evaluation) continue
       const allMatch = activeCriteria.every((c) => {
+        if (c.filterType) {
+          return evaluateStructuredCriterion(creator.id, creator, c)
+        }
+        if (!evaluation) return false
         const result = evaluation.criteria[c.key]
         return result && result.status !== 'no-match'
       })
@@ -203,24 +183,6 @@ export default function PersonalNotesPage() {
   }, [activeCriteria])
 
   const evaluatedCount = investigation.revealedScores.size
-
-  // Broadened count: how many more would match if we removed the limiting criterion
-  const broadenedCount = useMemo(() => {
-    if (activeCriteria.length <= 1) return 0
-    const remainingCriteria = activeCriteria.filter((c) => c.key !== limitingCriterionKey)
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
-    let countWithout = 0
-    for (const creator of allCreators) {
-      const evaluation = evaluationMap.get(creator.id)
-      if (!evaluation) continue
-      const allMatch = remainingCriteria.every((c) => {
-        const result = evaluation.criteria[c.key]
-        return result && result.status !== 'no-match'
-      })
-      if (allMatch) countWithout++
-    }
-    return countWithout - matchCount
-  }, [activeCriteria, limitingCriterionKey, matchCount])
 
   // Sort creators: original order during idle/decomposing/investigating, descending score during settling/results
   const sortedCreators = useMemo(() => {
@@ -235,7 +197,7 @@ export default function PersonalNotesPage() {
     return allCreators
   }, [searchPhase])
 
-  const hasActiveSearch = searchPhase !== 'idle'
+  const sidebarVisible = searchPhase !== 'idle' || filterSidebarOpen || activeCriteria.length > 0
 
   return (
     <div className="flex h-screen">
@@ -270,6 +232,22 @@ export default function PersonalNotesPage() {
               )}
             </form>
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setFilterSidebarOpen((p) => !p)}
+                className={`flex items-center gap-1.5 h-7 px-2.5 rounded-md border transition-colors cursor-pointer ${
+                  filterSidebarOpen || activeCriteria.some((c) => c.filterType)
+                    ? 'bg-brand-blue/15 border-brand-blue/30 text-brand-blue'
+                    : 'bg-bg-card-hover border-[#3a4250] text-text-secondary hover:text-text-primary'
+                }`}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                <span className="text-xs font-medium">Filters</span>
+                {activeCriteria.filter((c) => c.filterType).length > 0 && (
+                  <span className="flex items-center justify-center w-4 h-4 rounded-full bg-brand-blue/20 text-[9px] font-bold text-brand-blue">
+                    {activeCriteria.filter((c) => c.filterType).length}
+                  </span>
+                )}
+              </button>
               <div className="h-6 px-2 rounded bg-bg-card-hover border border-[#3a4250] flex items-center">
                 <span className="text-[11px] text-text-secondary">&#8984;K</span>
               </div>
@@ -292,8 +270,8 @@ export default function PersonalNotesPage() {
             evaluatedCount={evaluatedCount}
           />
 
-          {/* Scrollable table area — both axes */}
-          <div className="flex-1 overflow-auto">
+          {/* Scrollable table area */}
+          <div className="flex-1 overflow-y-auto overflow-x-auto min-h-0">
             <TableHeader
               activeCriteria={activeCriteria}
               activeEnrichments={activeEnrichments}
@@ -309,14 +287,14 @@ export default function PersonalNotesPage() {
               selectedCreatorId={selectedCreatorId}
               onSelect={handleSelect}
               searchPhase={searchPhase}
-              dimmedCreatorIds={dimmedCreatorIds}
+              excludedCreatorIds={excludedCreatorIds}
             />
           </div>
         </div>
 
         {/* Right detail sidebar */}
         <DetailSidebar
-          isOpen={hasActiveSearch}
+          isOpen={sidebarVisible}
           creator={selectedCreator}
           evaluation={selectedEvaluation}
           query={query}
@@ -325,14 +303,14 @@ export default function PersonalNotesPage() {
           searchPhase={searchPhase}
           matchCount={matchCount}
           totalCount={allCreators.length}
-          limitingCriterion={limitingCriterion}
-          broadenedCount={broadenedCount}
-          onClose={handleReset}
+          criterionMatchCounts={criterionMatchCounts}
+          onClose={() => { setFilterSidebarOpen(false); handleReset() }}
           onDeselectCreator={() => setSelectedCreatorId(null)}
           onRemoveCriterion={handleRemoveCriterion}
-          onAddCriterion={handleAddCriterion}
-          onBroadenSearch={handleBroadenSearch}
+          onAddStructuredCriterion={handleAddStructuredCriterion}
           onToggleEnrichment={handleToggleEnrichment}
+          onThinkingStepComplete={handleThinkingStepComplete}
+          onThinkingComplete={handleThinkingComplete}
         />
       </div>
     </div>

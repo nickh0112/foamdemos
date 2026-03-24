@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion'
 import type { BaseCreator, CriterionDef, CreatorEvaluation, EnrichmentDef } from '../../data/creators'
+import { evaluateStructuredCriterion } from '../../data/creators'
 import type { CellRevealState } from '../../hooks/useInvestigation'
 import type { SearchPhase } from './TableHeader'
 import CriteriaCell from './CriteriaCell'
 import ContentThumbnails from './ContentThumbnails'
 import PlatformIcon from './PlatformIcon'
 
-const FLUID_COLS = '32px minmax(180px,1.8fr) minmax(140px,1.2fr) minmax(120px,1fr) 64px 64px 64px minmax(140px,1.2fr)'
-const FIXED_COLS = '32px 180px 140px 120px 56px 56px 56px 120px'
-const BASE_W = 760
+const FLUID_COLS = '36px minmax(200px,1.8fr) minmax(160px,1.2fr) minmax(140px,1fr) 72px 72px 72px minmax(160px,1.2fr)'
+const FIXED_COLS = '36px 200px 160px 140px 72px 72px 72px 160px'
+const BASE_W = 912
 const CRITERIA_COL_W = 85
 const ENRICHMENT_COL_W = 100
 const DIVIDER_W = 20
@@ -20,7 +21,7 @@ interface Props {
   activeEnrichments: EnrichmentDef[]
   enrichmentValues: Record<string, string>
   cellStates: Map<string, CellRevealState>
-  isDimmed: boolean
+  isExcluded: boolean
   isSelected: boolean
   onSelect: () => void
   searchPhase: SearchPhase
@@ -33,30 +34,38 @@ export default function TableRow({
   activeEnrichments,
   enrichmentValues,
   cellStates,
-  isDimmed,
+  isExcluded,
   isSelected,
   onSelect,
   searchPhase,
 }: Props) {
-  const hasCriteria = activeCriteria.length > 0 && searchPhase !== 'idle'
+  const hasNLCriteria = activeCriteria.some(c => !c.filterType) && searchPhase !== 'idle'
+  const hasStructuredCriteria = activeCriteria.some(c => c.filterType != null)
+  const hasCriteria = hasNLCriteria || hasStructuredCriteria
   const hasExtraCols = hasCriteria || activeEnrichments.length > 0
   const criteriaWidth = hasCriteria ? DIVIDER_W + activeCriteria.length * CRITERIA_COL_W : 0
-  const enrichmentWidth = hasCriteria && activeEnrichments.length > 0 ? DIVIDER_W + activeEnrichments.length * ENRICHMENT_COL_W : 0
+  const enrichmentWidth = activeEnrichments.length > 0 ? DIVIDER_W + activeEnrichments.length * ENRICHMENT_COL_W : 0
 
   return (
     <motion.div
-      layout
-      layoutId={creator.id}
-      animate={{ opacity: isDimmed ? 0.4 : 1 }}
+      {...(isExcluded
+        ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+        : { layout: true, layoutId: creator.id, animate: { opacity: 1 } }
+      )}
       transition={{
-        opacity: { duration: 0.4 },
+        opacity: { duration: 0.3 },
         layout: { type: 'spring', stiffness: 200, damping: 28 },
       }}
       onClick={onSelect}
       style={hasExtraCols ? { minWidth: BASE_W + criteriaWidth + enrichmentWidth } : undefined}
       className={`
         flex items-center h-[52px] px-5 cursor-pointer transition-colors duration-150
-        ${isSelected ? 'bg-brand-blue/5 border-l-2 border-brand-blue' : 'border-l-2 border-transparent hover:bg-bg-card-hover/30'}
+        ${isExcluded
+          ? 'border-l-2 border-text-tertiary/20 bg-bg-card-hover/10 hover:bg-bg-card-hover/30'
+          : isSelected
+            ? 'bg-brand-blue/5 border-l-2 border-brand-blue'
+            : 'border-l-2 border-transparent hover:bg-bg-card-hover/30'
+        }
       `}
     >
       {/* Base columns */}
@@ -98,9 +107,12 @@ export default function TableRow({
           <div className="w-px h-8 bg-border-card mx-2 shrink-0" />
           {activeCriteria.map((c) => {
             const cellKey = `${creator.id}:${c.key}`
-            const revealState = cellStates.get(cellKey) ?? (searchPhase === 'results' || searchPhase === 'settling' ? 'revealed' : 'empty')
-            const criterionResult = evaluation?.criteria[c.key]
-            const status = criterionResult?.status ?? 'no-match'
+            const revealState = c.filterType
+              ? 'revealed' as const
+              : (cellStates.get(cellKey) ?? (searchPhase === 'results' || searchPhase === 'settling' ? 'revealed' : 'empty'))
+            const status = c.filterType
+              ? (evaluateStructuredCriterion(creator.id, creator, c) ? 'match' : 'no-match')
+              : (evaluation?.criteria[c.key]?.status ?? 'no-match')
             return (
               <div key={c.key} className="flex-1 flex items-center justify-center">
                 <CriteriaCell revealState={revealState} status={status} />
