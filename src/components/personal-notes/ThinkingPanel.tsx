@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Sparkles } from 'lucide-react'
 import type { ThinkingStep } from '../../data/creators'
 import InvestigationStep from '../shared/InvestigationStep'
 
@@ -58,8 +57,7 @@ export default function ThinkingPanel({ steps, onStepComplete, onAllComplete }: 
       className="rounded-[10px] bg-bg-card border border-[#8b5cf650] p-4 flex flex-col gap-2"
     >
       <div className="flex items-center gap-2 mb-1">
-        <Sparkles className="w-3.5 h-3.5 text-brand-purple" />
-        <span className="text-[13px] font-semibold text-brand-purple">Decomposing search query</span>
+        <span className="text-[13px] font-semibold text-brand-purple">Analyzing query</span>
       </div>
 
       {steps.map((step, i) => (

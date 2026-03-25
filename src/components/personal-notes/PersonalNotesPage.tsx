@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { allCreators, QUERY_CRITERIA, EVALUATIONS, AVAILABLE_ENRICHMENTS, evaluateStructuredCriterion } from '../../data/creators'
-import type { CriterionDef, EnrichmentDef, ThinkingStep } from '../../data/creators'
+import { allCreators, AVAILABLE_ENRICHMENTS, evaluateStructuredCriterion, resolveQueryFlow } from '../../data/creators'
+import type { CriterionDef, EnrichmentDef, ThinkingStep, QueryFlow } from '../../data/creators'
 import { useInvestigation } from '../../hooks/useInvestigation'
 import Sidebar from '../shared/Sidebar'
 import SearchHeader from './SearchHeader'
@@ -8,7 +8,7 @@ import TableHeader from './TableHeader'
 import type { SearchPhase } from './TableHeader'
 import ResultsTable from './ResultsTable'
 import DetailSidebar from './DetailSidebar'
-import { Filter, Search, Sparkles } from 'lucide-react'
+import { Filter, Search } from 'lucide-react'
 
 export default function PersonalNotesPage() {
   const [selectedCreatorId, setSelectedCreatorId] = useState<string | null>(null)
@@ -17,8 +17,11 @@ export default function PersonalNotesPage() {
   const [activeCriteria, setActiveCriteria] = useState<CriterionDef[]>([])
   const [activeEnrichments, setActiveEnrichments] = useState<EnrichmentDef[]>([])
   const [filterSidebarOpen, setFilterSidebarOpen] = useState(false)
+  const [activeFlow, setActiveFlow] = useState<QueryFlow | null>(null)
 
-  const investigation = useInvestigation(allCreators, activeCriteria, EVALUATIONS)
+  const evaluations = activeFlow?.evaluations ?? []
+
+  const investigation = useInvestigation(allCreators, activeCriteria, evaluations)
 
   useEffect(() => {
     document.title = 'Personal Notes Search — Foam'
@@ -35,7 +38,8 @@ export default function PersonalNotesPage() {
   // ThinkingPanel step complete: add criterion if step has one
   const handleThinkingStepComplete = useCallback((step: ThinkingStep) => {
     if (step.criterionKey) {
-      const criterion = QUERY_CRITERIA.find((c) => c.key === step.criterionKey)
+      const criteria = activeFlow?.criteria ?? []
+      const criterion = criteria.find((c) => c.key === step.criterionKey)
       if (criterion) {
         setActiveCriteria((prev) => {
           if (prev.some((c) => c.key === criterion.key)) return prev
@@ -43,7 +47,7 @@ export default function PersonalNotesPage() {
         })
       }
     }
-  }, [])
+  }, [activeFlow])
 
   // ThinkingPanel all steps done: transition to investigating
   const handleThinkingComplete = useCallback(() => {
@@ -70,7 +74,7 @@ export default function PersonalNotesPage() {
   // Reactive excluded IDs: creators that don't match ALL active criteria
   const excludedCreatorIds = useMemo(() => {
     if (activeCriteria.length === 0) return new Set<string>()
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
+    const evaluationMap = new Map(evaluations.map((e) => [e.creatorId, e]))
     const excluded = new Set<string>()
     for (const creator of allCreators) {
       const evaluation = evaluationMap.get(creator.id)
@@ -83,11 +87,11 @@ export default function PersonalNotesPage() {
       if (!allMatch) excluded.add(creator.id)
     }
     return excluded
-  }, [activeCriteria])
+  }, [activeCriteria, evaluations])
 
   // Per-criterion match counts for sidebar pills
   const criterionMatchCounts = useMemo(() => {
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
+    const evaluationMap = new Map(evaluations.map((e) => [e.creatorId, e]))
     const counts = new Map<string, number>()
     for (const c of activeCriteria) {
       let count = 0
@@ -103,7 +107,7 @@ export default function PersonalNotesPage() {
       counts.set(c.key, count)
     }
     return counts
-  }, [activeCriteria])
+  }, [activeCriteria, evaluations])
 
   const handleSelect = useCallback((id: string) => {
     setSelectedCreatorId((prev) => (prev === id ? null : id))
@@ -111,6 +115,8 @@ export default function PersonalNotesPage() {
 
   const handleSearch = useCallback(() => {
     if (query.trim()) {
+      const flow = resolveQueryFlow(query)
+      setActiveFlow(flow)
       setSelectedCreatorId(null)
       setActiveCriteria([])
       setActiveEnrichments([])
@@ -124,6 +130,7 @@ export default function PersonalNotesPage() {
     setActiveCriteria([])
     setActiveEnrichments([])
     setSearchPhase('idle')
+    setActiveFlow(null)
   }, [])
 
   const handleRemoveCriterion = useCallback((key: string) => {
@@ -161,33 +168,15 @@ export default function PersonalNotesPage() {
     : null
 
   const selectedEvaluation = selectedCreatorId
-    ? EVALUATIONS.find((e) => e.creatorId === selectedCreatorId) ?? null
+    ? evaluations.find((e) => e.creatorId === selectedCreatorId) ?? null
     : null
-
-  const matchCount = useMemo(() => {
-    const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
-    let count = 0
-    for (const creator of allCreators) {
-      const evaluation = evaluationMap.get(creator.id)
-      const allMatch = activeCriteria.every((c) => {
-        if (c.filterType) {
-          return evaluateStructuredCriterion(creator.id, creator, c)
-        }
-        if (!evaluation) return false
-        const result = evaluation.criteria[c.key]
-        return result && result.status !== 'no-match'
-      })
-      if (allMatch) count++
-    }
-    return count
-  }, [activeCriteria])
 
   const evaluatedCount = investigation.revealedScores.size
 
   // Sort creators: original order during idle/decomposing/investigating, descending score during settling/results
   const sortedCreators = useMemo(() => {
     if (searchPhase === 'settling' || searchPhase === 'results') {
-      const evaluationMap = new Map(EVALUATIONS.map((e) => [e.creatorId, e]))
+      const evaluationMap = new Map(evaluations.map((e) => [e.creatorId, e]))
       return [...allCreators].sort((a, b) => {
         const scoreA = evaluationMap.get(a.id)?.score ?? 0
         const scoreB = evaluationMap.get(b.id)?.score ?? 0
@@ -195,7 +184,7 @@ export default function PersonalNotesPage() {
       })
     }
     return allCreators
-  }, [searchPhase])
+  }, [searchPhase, evaluations])
 
   const sidebarVisible = searchPhase !== 'idle' || filterSidebarOpen || activeCriteria.length > 0
 
@@ -218,16 +207,15 @@ export default function PersonalNotesPage() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Try: Austin creators who have kids and do lifestyle content"
+                placeholder="Try: Austin lifestyle creators with kids, American dads..."
                 className="flex-1 bg-transparent text-[13px] text-text-primary placeholder:text-text-tertiary outline-none"
               />
               {query.trim() && (
                 <button
                   type="submit"
-                  className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-brand-purple/15 border border-brand-purple/30 text-[11px] font-medium text-brand-purple hover:bg-brand-purple/25 transition-colors cursor-pointer"
+                  className="flex items-center gap-1.5 h-7 px-3 rounded-md bg-brand-blue/15 border border-brand-blue/30 text-[11px] font-medium text-brand-blue hover:bg-brand-blue/25 transition-colors cursor-pointer"
                 >
-                  <Sparkles className="w-3 h-3" />
-                  Search with AI
+                  Search
                 </button>
               )}
             </form>
@@ -251,10 +239,6 @@ export default function PersonalNotesPage() {
               <div className="h-6 px-2 rounded bg-bg-card-hover border border-[#3a4250] flex items-center">
                 <span className="text-[11px] text-text-secondary">&#8984;K</span>
               </div>
-              <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md bg-brand-purple/10">
-                <Sparkles className="w-3.5 h-3.5 text-brand-purple" />
-                <span className="text-xs font-medium text-brand-purple">Ask Assist</span>
-              </div>
               <div className="h-7 px-3 rounded-md bg-bg-card-hover border border-[#3a4250] flex items-center">
                 <span className="text-xs font-medium text-text-secondary">Shortlist</span>
               </div>
@@ -265,9 +249,9 @@ export default function PersonalNotesPage() {
             query={query}
             onReset={handleReset}
             searchPhase={searchPhase}
-            matchCount={matchCount}
             totalCount={allCreators.length}
             evaluatedCount={evaluatedCount}
+            recognizedTerms={activeFlow?.recognizedTerms ?? []}
           />
 
           {/* Scrollable table area */}
@@ -280,7 +264,7 @@ export default function PersonalNotesPage() {
 
             <ResultsTable
               creators={sortedCreators}
-              evaluations={EVALUATIONS}
+              evaluations={evaluations}
               activeCriteria={activeCriteria}
               activeEnrichments={activeEnrichments}
               cellStates={investigation.cellStates}
@@ -300,10 +284,11 @@ export default function PersonalNotesPage() {
           query={query}
           activeCriteria={activeCriteria}
           activeEnrichments={activeEnrichments}
+          evaluations={evaluations}
           searchPhase={searchPhase}
-          matchCount={matchCount}
           totalCount={allCreators.length}
           criterionMatchCounts={criterionMatchCounts}
+          thinkingSteps={activeFlow?.thinkingSteps ?? []}
           onClose={() => { setFilterSidebarOpen(false); handleReset() }}
           onDeselectCreator={() => setSelectedCreatorId(null)}
           onRemoveCriterion={handleRemoveCriterion}

@@ -1,3 +1,4 @@
+// Legacy alias — use QUERY_FLOWS['austin-lifestyle'].recognizedTerms instead
 export const RECOGNIZED_TERMS = ['Austin', 'kids', 'children', 'lifestyle', 'family', 'fitness'] as const
 
 export type CriteriaStatus = 'match' | 'no-match' | 'partial'
@@ -488,6 +489,10 @@ export const allCreators: BaseCreator[] = [
       'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=200&h=200&fit=crop',
       'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=200&h=200&fit=crop',
     ],
+    note: {
+      icon: 'notebook-pen',
+      quote: '"Derek\'s daughter turns 5 in April — he wants to start a family dining series featuring kid-friendly restaurants." — Call notes, Jan 2026',
+    },
   },
   {
     id: 'nina',
@@ -522,6 +527,10 @@ export const allCreators: BaseCreator[] = [
       'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=200&h=200&fit=crop',
       'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=200&h=200&fit=crop',
     ],
+    note: {
+      icon: 'notebook-pen',
+      quote: '"Marcus has a 3-year-old son. Wants to pivot toward family fitness content — dad workouts with kids." — Internal notes, Nov 2025',
+    },
   },
   {
     id: 'sophie',
@@ -556,6 +565,10 @@ export const allCreators: BaseCreator[] = [
       'https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=200&h=200&fit=crop',
       'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=200&h=200&fit=crop',
     ],
+    note: {
+      icon: 'notebook-pen',
+      quote: '"Tyler started doing father-son hiking content since his boy turned 4. The Trail Buddies series gets great engagement." — Team sync, Dec 2025',
+    },
   },
   {
     id: 'rachel',
@@ -624,6 +637,10 @@ export const allCreators: BaseCreator[] = [
       'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=200&h=200&fit=crop',
       'https://images.unsplash.com/photo-1553729459-afe8f2e2ed65?w=200&h=200&fit=crop',
     ],
+    note: {
+      icon: 'notebook-pen',
+      quote: '"Omar mentioned twin boys (age 2) on his podcast. Starting a fatherhood + finance angle — teaching kids about money." — Podcast notes, Oct 2025',
+    },
   },
   {
     id: 'mia',
@@ -658,6 +675,11 @@ export const allCreators: BaseCreator[] = [
       'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=200&h=200&fit=crop',
       'https://images.unsplash.com/photo-1514306191717-452ec28c7814?w=200&h=200&fit=crop',
     ],
+    contentCitation: {
+      icon: 'video',
+      text: '"Comedy Dad" TikTok series — viral parenting skits, 12M+ views across 8 episodes',
+      color: '#10b981',
+    },
   },
 ]
 
@@ -822,3 +844,215 @@ export const EVALUATIONS: CreatorEvaluation[] = [
     analysis: { scoreLabel: 'Low match · 10/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Ben is a comedy creator in Portland. No overlap with any search criteria.' },
   },
 ]
+
+// ─── Multi-Query Flow System ────────────────────────────────────────────────
+
+export type QueryFlowId = 'austin-lifestyle' | 'american-dads'
+
+export interface QueryFlow {
+  id: QueryFlowId
+  recognizedTerms: string[]
+  thinkingSteps: ThinkingStep[]
+  criteria: CriterionDef[]
+  evaluations: CreatorEvaluation[]
+}
+
+const AMERICAN_DADS_CRITERIA: CriterionDef[] = [
+  { key: 'isMale', label: 'Male Creator' },
+  { key: 'hasChildren', label: 'Has Children' },
+  { key: 'usaBased', label: 'Based in USA' },
+]
+
+const AMERICAN_DADS_THINKING_STEPS: ThinkingStep[] = [
+  { text: 'Analyzing your query...', result: 'Identified 3 search criteria', delay: 800 },
+  { text: 'Searching profiles for male creators...', result: 'Found 6 matching profiles', delay: 900, criterionKey: 'isMale' },
+  { text: 'Searching notes for parenting signals...', result: 'Found 112 matching notes', delay: 900, criterionKey: 'hasChildren' },
+  { text: 'Checking US-based locations...', result: 'All 18 are US-based', delay: 800, criterionKey: 'usaBased' },
+  { text: 'Cross-referencing results...', result: 'Re-ranking 18 creators', delay: 700 },
+]
+
+const AMERICAN_DADS_EVALUATIONS: CreatorEvaluation[] = [
+  // Full match: male + kids + US
+  {
+    creatorId: 'marcus', score: 90,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Marcus is a male fitness and lifestyle creator. Profile and content consistently present as male.', references: ['ig', 'tt', 'yt'] },
+      hasChildren: { status: 'match', value: 'Personal Note', source: 'Personal Note', sourceColor: '#8b5cf6', reasoning: 'Internal notes confirm Marcus has a 3-year-old son. He wants to pivot toward family fitness content — dad workouts with kids.', references: ['note', 'ig'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'All profiles list Austin, TX. Regularly posts from Austin fitness studios and local trails.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Strong match · 90/100', scoreColor: '#34c0a2', scoreBg: '#34c0a220', description: 'Marcus is a fitness creator in Austin with a 3-year-old son. Notes indicate he wants to create more family fitness content.' },
+  },
+  {
+    creatorId: 'derek', score: 85,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Derek is a male food and travel creator based in Houston.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'match', value: 'Personal Note', source: 'Personal Note', sourceColor: '#8b5cf6', reasoning: 'Call notes confirm Derek has a daughter turning 5 in April. He wants to start a family dining series featuring kid-friendly restaurants.', references: ['note'] },
+      usaBased: { status: 'match', value: 'Houston, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Houston, TX. Content geo-tags confirm US location.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Strong match · 85/100', scoreColor: '#34c0a2', scoreBg: '#34c0a220', description: 'Derek is a food creator in Houston with a daughter turning 5. Interested in family dining content.' },
+  },
+  {
+    creatorId: 'omar', score: 82,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Omar is a male finance and business creator. LinkedIn and social profiles confirm.', references: ['ig', 'linkedin'] },
+      hasChildren: { status: 'match', value: 'Podcast Note', source: 'Personal Note', sourceColor: '#8b5cf6', reasoning: 'Omar mentioned twin boys (age 2) on his podcast. Starting a fatherhood + finance angle — teaching kids about money.', references: ['note', 'yt'] },
+      usaBased: { status: 'match', value: 'Chicago, IL', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Chicago, IL. All profiles and content confirm US location.', references: ['ig', 'linkedin', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Strong match · 82/100', scoreColor: '#34c0a2', scoreBg: '#34c0a220', description: 'Omar is a finance creator in Chicago with twin boys. Branching into fatherhood content.' },
+  },
+  {
+    creatorId: 'tyler', score: 78,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Tyler is a male outdoors and adventure creator based in Denver.', references: ['ig', 'yt'] },
+      hasChildren: { status: 'match', value: 'Personal Note', source: 'Personal Note', sourceColor: '#8b5cf6', reasoning: 'Team notes confirm Tyler started father-son hiking content since his boy turned 4. The "Trail Buddies" series gets great engagement.', references: ['note', 'ig', 'yt'] },
+      usaBased: { status: 'match', value: 'Denver, CO', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Denver, CO. Content features Colorado Rockies and Pacific Northwest locations.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Strong match · 78/100', scoreColor: '#34c0a2', scoreBg: '#34c0a220', description: 'Tyler is an outdoors creator in Denver doing father-son hiking content. His "Trail Buddies" series has strong engagement.' },
+  },
+  {
+    creatorId: 'ben', score: 75,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Ben is a male comedy and entertainment creator based in Portland.', references: ['tt', 'ig'] },
+      hasChildren: { status: 'match', value: 'Content Data', source: 'Content', sourceColor: '#3b82f6', reasoning: 'Ben\'s viral "Comedy Dad" TikTok series features parenting skits with his kids. 12M+ views across 8 episodes confirms active fatherhood content.', references: ['tt', 'yt'] },
+      usaBased: { status: 'match', value: 'Portland, OR', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Portland, OR. All content geo-tagged to Portland area.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Strong match · 75/100', scoreColor: '#34c0a2', scoreBg: '#34c0a220', description: 'Ben\'s "Comedy Dad" series on TikTok has 12M+ views. Active fatherhood content creator in Portland.' },
+  },
+  // Partial: male + US, no kids
+  {
+    creatorId: 'carlos', score: 45,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Carlos is a male tech and gaming creator based in Austin.', references: ['ig', 'yt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No personal or family content. All posts are product-focused tech reviews and gaming content.', references: ['ig', 'yt'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Austin, TX. Attends SXSW and references Austin tech scene.', references: ['yt', 'ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 45/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Carlos is a male US-based creator but no evidence of children in any data source.' },
+  },
+  {
+    creatorId: 'jordan', score: 40,
+    criteria: {
+      isMale: { status: 'match', value: 'Male', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Jordan is a male lifestyle and fashion creator based in Austin.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No references to children found across 30+ analyzed posts. Content focuses on personal style and social life.', references: ['ig', 'tt'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Bio lists Austin. Content heavily features Austin locations.', references: ['ig', 'tt', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 40/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Jordan is a male US-based creator but no children evidence found.' },
+  },
+  // Female creators with kids (partial — has children + US, not male)
+  {
+    creatorId: 'maya', score: 30,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Maya is a female lifestyle and family content creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'match', value: 'Personal Note', source: 'Personal Note', sourceColor: '#8b5cf6', reasoning: 'Personal note confirms Maya had her daughter in June 2025. Multiple recent Instagram stories show infant content.', references: ['note', 'ig'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Austin, TX. Geo-tagged posts confirm active local presence.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 30/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Maya has children and is US-based, but is a female creator.' },
+  },
+  {
+    creatorId: 'priya', score: 28,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Priya is a female family and parenting creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'match', value: 'Content Data', source: 'Content', sourceColor: '#3b82f6', reasoning: 'Priya openly shares about her two children across all platforms.', references: ['tt', 'ig', 'yt'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Profile location set to Austin, TX.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 28/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Priya has children and is US-based, but is a female creator.' },
+  },
+  {
+    creatorId: 'lena', score: 26,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Lena is a female parenting and DIY creator.', references: ['ig', 'yt'] },
+      hasChildren: { status: 'match', value: 'Content Data', source: 'Content', sourceColor: '#3b82f6', reasoning: 'Multiple TikToks and YouTube videos feature her two kids.', references: ['tt', 'yt', 'ig'] },
+      usaBased: { status: 'match', value: 'Round Rock, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Round Rock, TX — Austin metro area.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 26/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Lena has children and is US-based, but is a female creator.' },
+  },
+  {
+    creatorId: 'sophie', score: 24,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Sophie is a female education and parenting creator.', references: ['yt', 'ig'] },
+      hasChildren: { status: 'match', value: 'Content Data', source: 'Content', sourceColor: '#3b82f6', reasoning: 'YouTube channel prominently features her son in educational content.', references: ['yt', 'ig', 'tt'] },
+      usaBased: { status: 'match', value: 'San Francisco, CA', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in San Francisco, CA.', references: ['ig', 'web', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 24/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Sophie has children and is US-based, but is a female creator.' },
+  },
+  {
+    creatorId: 'emma', score: 22,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Emma is a female home and DIY creator.', references: ['ig', 'yt'] },
+      hasChildren: { status: 'match', value: 'Content Data', source: 'Content', sourceColor: '#3b82f6', reasoning: 'Children appear in multiple YouTube videos and Instagram stories.', references: ['yt', 'ig'] },
+      usaBased: { status: 'match', value: 'Nashville, TN', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Nashville, TN.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Partial match · 22/100', scoreColor: '#f59e0b', scoreBg: '#f59e0b20', description: 'Emma has children and is US-based, but is a female creator.' },
+  },
+  // Female, no kids, US
+  {
+    creatorId: 'jess', score: 18,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Jess is a female wellness and fitness creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No mention of children in any data source.', references: ['ig', 'tt', 'yt'] },
+      usaBased: { status: 'match', value: 'Austin, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Austin, TX.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Low match · 18/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Jess is US-based but is female with no children evidence.' },
+  },
+  {
+    creatorId: 'aisha', score: 16,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Aisha is a female fashion and beauty creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No personal or family content. Content is exclusively brand and editorial focused.', references: ['ig', 'tt'] },
+      usaBased: { status: 'match', value: 'Los Angeles, CA', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Los Angeles, CA.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Low match · 16/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Aisha is US-based but is female with no children evidence.' },
+  },
+  {
+    creatorId: 'nina', score: 14,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Nina is a female lifestyle and wellness creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'no-match', value: 'Mentioned nieces', source: 'Content', sourceColor: '#54657d', reasoning: 'Two TikToks feature young children identified as her nieces. No direct evidence of her own children.', references: ['tt', 'ig'] },
+      usaBased: { status: 'match', value: 'Dallas, TX', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Dallas, TX.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Low match · 14/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Nina is US-based but is female. Mentions nieces but no children of her own.' },
+  },
+  {
+    creatorId: 'rachel', score: 12,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Rachel is a female beauty and skincare creator.', references: ['ig', 'yt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No children or family content found.', references: ['ig', 'tt'] },
+      usaBased: { status: 'match', value: 'New York, NY', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in New York City.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Low match · 12/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Rachel is US-based but is female with no children evidence.' },
+  },
+  {
+    creatorId: 'mia', score: 10,
+    criteria: {
+      isMale: { status: 'no-match', value: 'Female', source: 'Profile Data', sourceColor: '#54657d', reasoning: 'Mia is a female travel and lifestyle creator.', references: ['ig', 'tt'] },
+      hasChildren: { status: 'no-match', value: 'No evidence', source: 'Not found', sourceColor: '#54657d', reasoning: 'No children content found. Travel-focused lifestyle.', references: ['ig', 'tt'] },
+      usaBased: { status: 'match', value: 'Miami, FL', source: 'Profile Data', sourceColor: '#34c0a2', reasoning: 'Based in Miami, FL.', references: ['ig', 'maps'] },
+    },
+    analysis: { scoreLabel: 'Low match · 10/100', scoreColor: '#ef4444', scoreBg: '#ef444420', description: 'Mia is US-based but is female with no children evidence.' },
+  },
+]
+
+export const QUERY_FLOWS: Record<QueryFlowId, QueryFlow> = {
+  'austin-lifestyle': {
+    id: 'austin-lifestyle',
+    recognizedTerms: ['Austin', 'kids', 'children', 'lifestyle', 'family', 'fitness'],
+    thinkingSteps: THINKING_STEPS,
+    criteria: QUERY_CRITERIA,
+    evaluations: EVALUATIONS,
+  },
+  'american-dads': {
+    id: 'american-dads',
+    recognizedTerms: ['American', 'dads', 'men', 'fathers', 'kids', 'children'],
+    thinkingSteps: AMERICAN_DADS_THINKING_STEPS,
+    criteria: AMERICAN_DADS_CRITERIA,
+    evaluations: AMERICAN_DADS_EVALUATIONS,
+  },
+}
+
+export function resolveQueryFlow(query: string): QueryFlow | null {
+  const q = query.toLowerCase()
+  if (q.includes('dad') || q.includes('american men') || q.includes('men with kids'))
+    return QUERY_FLOWS['american-dads']
+  if (q.includes('austin') || q.includes('lifestyle'))
+    return QUERY_FLOWS['austin-lifestyle']
+  return null
+}

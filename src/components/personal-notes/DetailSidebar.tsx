@@ -1,3 +1,4 @@
+import { useState, useMemo } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, Check, ChevronLeft, ExternalLink, Link2, NotebookPen, Plus, Video, X } from 'lucide-react'
 import { FaLinkedinIn } from 'react-icons/fa6'
@@ -5,7 +6,7 @@ import { HiOutlineGlobeAlt } from 'react-icons/hi2'
 import { IoMailSharp } from 'react-icons/io5'
 import { TbMapPin } from 'react-icons/tb'
 import type { BaseCreator, CriteriaStatus, CriterionDef, CreatorEvaluation, EnrichmentDef, ReferenceType, ThinkingStep } from '../../data/creators'
-import { AVAILABLE_ENRICHMENTS, CRITERION_COLORS, THINKING_STEPS } from '../../data/creators'
+import { AVAILABLE_ENRICHMENTS, CRITERION_COLORS } from '../../data/creators'
 import type { SearchPhase } from './TableHeader'
 import ThinkingPanel from './ThinkingPanel'
 import PlatformIcon from './PlatformIcon'
@@ -32,10 +33,11 @@ interface Props {
   query: string
   activeCriteria: CriterionDef[]
   activeEnrichments: EnrichmentDef[]
+  evaluations: CreatorEvaluation[]
   searchPhase: SearchPhase
-  matchCount: number
   totalCount: number
   criterionMatchCounts: Map<string, number>
+  thinkingSteps: ThinkingStep[]
   onClose: () => void
   onDeselectCreator: () => void
   onRemoveCriterion: (key: string) => void
@@ -51,9 +53,115 @@ function StatusIcon({ status }: { status: CriteriaStatus }) {
   return <span className="text-[13px] text-text-tertiary leading-none">&mdash;</span>
 }
 
+/** Analyze the most-limiting criterion to produce a smart broadening recommendation */
+function getLimitingInsight(
+  criterionKey: string,
+  _criterion: CriterionDef,
+  evaluations: CreatorEvaluation[],
+  matchCount: number,
+  nextBestCount: number,
+): { summary: string; recommendation: string | null } {
+  const partials: string[] = []
+  const noMatches: string[] = []
+
+  for (const ev of evaluations) {
+    const result = ev.criteria[criterionKey]
+    if (!result) continue
+    if (result.status === 'partial') partials.push(result.value)
+    else if (result.status === 'no-match') noMatches.push(result.value)
+  }
+
+  const wouldGain = nextBestCount - matchCount
+  const summary = `Most limiting factor — only ${matchCount} creators pass this criterion.${wouldGain > 0 ? ` Removing it adds ${wouldGain} more.` : ''}`
+
+  // Try to find a smart broadening from partial-match values
+  let recommendation: string | null = null
+
+  if (partials.length > 0) {
+    // Location-style: look for shared state/region among partials
+    const stateRegex = /,\s*([A-Z]{2})$/
+    const partialStates = partials.map((v) => stateRegex.exec(v)?.[1]).filter(Boolean) as string[]
+    const matchValues = evaluations
+      .filter((ev) => ev.criteria[criterionKey]?.status === 'match')
+      .map((ev) => ev.criteria[criterionKey].value)
+    const matchStates = matchValues.map((v) => stateRegex.exec(v)?.[1]).filter(Boolean) as string[]
+
+    // If partials share a state with matches, suggest broadening to that state
+    const sharedStates = [...new Set(partialStates)].filter((s) => matchStates.includes(s))
+    if (sharedStates.length > 0) {
+      const stateName = sharedStates[0]
+      const nearbyCount = partials.filter((v) => v.includes(`, ${stateName}`)).length
+      recommendation = `Broaden to all of ${stateName} — ${nearbyCount} nearby creator${nearbyCount !== 1 ? 's' : ''} would match`
+    }
+
+    // Generic: if we have partials but couldn't derive a location pattern
+    if (!recommendation && partials.length >= 2) {
+      const uniquePartials = [...new Set(partials)]
+      recommendation = `${partials.length} creator${partials.length !== 1 ? 's' : ''} partially match (${uniquePartials.slice(0, 3).join(', ')}${uniquePartials.length > 3 ? '…' : ''}). Relaxing this criterion would include them.`
+    }
+    if (!recommendation && partials.length === 1) {
+      recommendation = `1 creator partially matches (${partials[0]}). Relaxing this criterion would include them.`
+    }
+  }
+
+  return { summary, recommendation }
+}
+
+function LimitingTooltip({
+  criterionKey,
+  criterion,
+  evaluations,
+  matchCount,
+  nextBestCount,
+}: {
+  criterionKey: string
+  criterion: CriterionDef
+  evaluations: CreatorEvaluation[]
+  matchCount: number
+  nextBestCount: number
+}) {
+  const [open, setOpen] = useState(false)
+  const insight = useMemo(
+    () => getLimitingInsight(criterionKey, criterion, evaluations, matchCount, nextBestCount),
+    [criterionKey, criterion, evaluations, matchCount, nextBestCount],
+  )
+
+  return (
+    <span
+      className="relative flex items-center"
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
+      <AlertTriangle className="w-3 h-3 text-brand-amber cursor-help" />
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full right-0 mb-2 w-64 p-3 rounded-lg bg-[#1e2530] border border-[#3a4250] shadow-xl z-50"
+          >
+            {/* Arrow */}
+            <div className="absolute -bottom-1 right-3 w-2 h-2 bg-[#1e2530] border-b border-r border-[#3a4250] rotate-45" />
+            <p className="text-[11px] text-text-secondary leading-relaxed m-0">
+              {insight.summary}
+            </p>
+            {insight.recommendation && (
+              <p className="text-[11px] text-brand-amber leading-relaxed mt-2 mb-0 font-medium">
+                {insight.recommendation}
+              </p>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
+  )
+}
+
 function SearchContextView({
   query, activeCriteria, activeEnrichments, searchPhase,
-  matchCount, totalCount, criterionMatchCounts,
+  totalCount, criterionMatchCounts, thinkingSteps, evaluations,
   onRemoveCriterion, onAddStructuredCriterion, onToggleEnrichment,
   onThinkingStepComplete, onThinkingComplete,
 }: {
@@ -61,9 +169,10 @@ function SearchContextView({
   activeCriteria: CriterionDef[]
   activeEnrichments: EnrichmentDef[]
   searchPhase: SearchPhase
-  matchCount: number
   totalCount: number
   criterionMatchCounts: Map<string, number>
+  thinkingSteps: ThinkingStep[]
+  evaluations: CreatorEvaluation[]
   onRemoveCriterion: (key: string) => void
   onAddStructuredCriterion: (criterion: CriterionDef) => void
   onToggleEnrichment: (enrichment: EnrichmentDef) => void
@@ -82,6 +191,18 @@ function SearchContextView({
         return count < limitingCount ? c.key : limitingKey
       }, null)
     : null
+
+  // How many creators pass the most-limiting criterion (for tooltip)
+  const mostLimitingMatchCount = mostLimitingKey ? (criterionMatchCounts.get(mostLimitingKey) ?? 0) : 0
+
+  // Next-best: the second-lowest count (what you'd get if the limiter were removed)
+  const nextBestCount = useMemo(() => {
+    if (!mostLimitingKey || activeCriteria.length < 2) return 0
+    const sorted = activeCriteria
+      .map((c) => ({ key: c.key, count: criterionMatchCounts.get(c.key) ?? totalCount }))
+      .sort((a, b) => a.count - b.count)
+    return sorted.length > 1 ? sorted[1].count : sorted[0].count
+  }, [mostLimitingKey, activeCriteria, criterionMatchCounts, totalCount])
 
   return (
     <motion.div
@@ -113,7 +234,7 @@ function SearchContextView({
         <AnimatePresence>
           {searchPhase === 'decomposing' && (
             <ThinkingPanel
-              steps={THINKING_STEPS}
+              steps={thinkingSteps}
               onStepComplete={onThinkingStepComplete}
               onAllComplete={onThinkingComplete}
             />
@@ -148,7 +269,15 @@ function SearchContextView({
                 <span className="text-[12px] text-text-primary flex-1 min-w-0">{c.label}</span>
                 {count !== undefined && isComplete && (
                   <span className={`flex items-center gap-1 text-[10px] font-medium shrink-0 ${isMostLimiting ? 'text-brand-amber' : 'text-text-tertiary'}`}>
-                    {isMostLimiting && <AlertTriangle className="w-3 h-3" />}
+                    {isMostLimiting && (
+                      <LimitingTooltip
+                        criterionKey={c.key}
+                        criterion={c}
+                        evaluations={evaluations}
+                        matchCount={mostLimitingMatchCount}
+                        nextBestCount={nextBestCount}
+                      />
+                    )}
                     {count} match
                   </span>
                 )}
@@ -180,23 +309,6 @@ function SearchContextView({
           </button>
         </div>
       </div>
-
-      {/* Summary stats — shown after investigation */}
-      {isComplete && (
-        <motion.div
-          initial={{ opacity: 0, y: 4 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="flex flex-col gap-1 px-3 py-2.5 rounded-lg bg-bg-card-hover/30 border border-border-card"
-        >
-          <div className="flex items-center gap-3 text-[11px] text-text-secondary">
-            <span>{matchCount} of {totalCount} match all criteria</span>
-          </div>
-          <span className="text-[10px] text-text-tertiary">
-            Data from 4 web and social media intelligence sources
-          </span>
-        </motion.div>
-      )}
 
       {/* Enrichments */}
       <div className="flex flex-col gap-3">
@@ -239,7 +351,7 @@ function SearchContextView({
 
       {/* Data Sources */}
       <div className="flex flex-col gap-3">
-        <div className="text-[10px] font-bold text-[#54657d] tracking-[1px] uppercase">Data Sources</div>
+        <div className="text-[10px] font-bold text-[#54657d] tracking-[1px] uppercase">Sources</div>
         <div className="flex flex-col gap-1.5">
           {['Personal notes', 'Instagram profiles', 'Content analysis', 'Location data'].map((source) => (
             <div key={source} className="flex items-center gap-2 text-[11px] text-text-tertiary">
@@ -397,8 +509,8 @@ function CreatorDetailView({ creator, evaluation, activeCriteria, onBack }: {
 }
 
 export default function DetailSidebar({
-  isOpen, creator, evaluation, query, activeCriteria, activeEnrichments, searchPhase,
-  matchCount, totalCount, criterionMatchCounts,
+  isOpen, creator, evaluation, query, activeCriteria, activeEnrichments, evaluations, searchPhase,
+  totalCount, criterionMatchCounts, thinkingSteps,
   onClose, onDeselectCreator, onRemoveCriterion, onAddStructuredCriterion, onToggleEnrichment,
   onThinkingStepComplete, onThinkingComplete,
 }: Props) {
@@ -436,9 +548,10 @@ export default function DetailSidebar({
                 activeCriteria={activeCriteria}
                 activeEnrichments={activeEnrichments}
                 searchPhase={searchPhase}
-                matchCount={matchCount}
                 totalCount={totalCount}
                 criterionMatchCounts={criterionMatchCounts}
+                thinkingSteps={thinkingSteps}
+                evaluations={evaluations}
                 onRemoveCriterion={onRemoveCriterion}
                 onAddStructuredCriterion={onAddStructuredCriterion}
                 onToggleEnrichment={onToggleEnrichment}
